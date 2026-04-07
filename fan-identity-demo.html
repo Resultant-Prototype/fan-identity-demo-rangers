@@ -570,10 +570,7 @@ console.assert(DAILY_ADW.length === 365 * 3, 'DAILY_ADW should have 1095 rows');
 const totalHandle = DAILY_ADW.reduce((s, r) => s + r.handle, 0);
 console.assert(totalHandle > 200_000_000 && totalHandle < 400_000_000,
   `Total handle ${totalHandle} out of $200M–$400M range`);
-console.log('DAILY_ADW OK — total handle </script>
-</body>
-</html>
- + (totalHandle / 1e6).toFixed(1) + 'M');
+console.log('DAILY_ADW OK — total handle $' + (totalHandle / 1e6).toFixed(1) + 'M');
 
 const BASE_TKT_REV = { 'Belmore Park': 360_000, 'Saratoga Downs': 420_000, 'Aqueduct Hills': 280_000 };
 const BASE_ATTACH  = { 'Belmore Park': 0.68, 'Saratoga Downs': 0.71, 'Aqueduct Hills': 0.63 };
@@ -651,10 +648,7 @@ const DAILY_FNB     = generateDailyFnB();
 console.assert(DAILY_TICKETS.length === 1095, 'DAILY_TICKETS row count');
 console.assert(DAILY_FNB.length === 1095, 'DAILY_FNB row count');
 const totalTktRev = DAILY_TICKETS.reduce((s, r) => s + r.gross_revenue, 0);
-console.log('DAILY_TICKETS OK — total ticket rev </script>
-</body>
-</html>
- + (totalTktRev / 1e6).toFixed(1) + 'M');
+console.log('DAILY_TICKETS OK — total ticket rev $' + (totalTktRev / 1e6).toFixed(1) + 'M');
 
 const US_STATES = ['NY','NJ','PA','CT','MA','FL','CA','TX','IL','OH','MD','VA','NC','GA','MI'];
 const STATE_WEIGHTS = [25,12,8,6,5,5,4,4,3,3,3,3,2,2,2];
@@ -826,10 +820,7 @@ function getTop10PctThreshold() {
 }
 
 const fmt = {
-  currency: n => '</script>
-</body>
-</html>
- + (n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(0)+'K' : n.toFixed(0)),
+  currency: n => '$' + (n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(0)+'K' : n.toFixed(0)),
   pct:      n => (n*100).toFixed(1) + '%',
   num:      n => n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n),
   delta:    (curr, prev) => {
@@ -1046,10 +1037,7 @@ function renderTab2() {
     { label: 'Tickets Sold',      value: fmt.num(totalTickets) },
     { label: 'Unique Purchasers', value: fmt.num(uniquePurchasers) },
     { label: 'Gross Revenue',     value: fmt.currency(totalRev) },
-    { label: 'Avg. Ticket Value', value: '</script>
-</body>
-</html>
- + avgTktVal.toFixed(0) },
+    { label: 'Avg. Ticket Value', value: '$' + avgTktVal.toFixed(0) },
     { label: 'Repeat Buyers',     value: fmt.pct(repeatPct) },
     { label: 'Top State',         value: topState },
   ]);
@@ -1194,17 +1182,11 @@ function renderTab3() {
 
   renderBANs('t3-bans', [
     { label: 'Total F&B Revenue',     value: fmt.currency(totalRev) },
-    { label: 'Avg. Per-Cap Spend',    value: '</script>
-</body>
-</html>
- + avgPerCap.toFixed(2) },
+    { label: 'Avg. Per-Cap Spend',    value: '$' + avgPerCap.toFixed(2) },
     { label: 'F&B Attach Rate',       value: fmt.pct(attachRate) },
     { label: 'Top Category',          value: topCat },
     { label: 'Transactions',          value: fmt.num(totalTxns) },
-    { label: 'Avg. Transaction Value',value: '</script>
-</body>
-</html>
- + avgTxnVal.toFixed(2) },
+    { label: 'Avg. Transaction Value',value: '$' + avgTxnVal.toFixed(2) },
   ]);
 
   // Chart: F&B Revenue by Day
@@ -1246,10 +1228,7 @@ function renderTab3() {
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
-      scales: { y: { ticks: { callback: v => '</script>
-</body>
-</html>
-+v.toFixed(0) } } },
+      scales: { y: { ticks: { callback: v => '$'+v.toFixed(0) } } },
     },
   });
 
@@ -1314,10 +1293,7 @@ function renderTab3() {
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
-      scales: { x: { ticks: { callback: v => '</script>
-</body>
-</html>
-+v.toFixed(0) } }, y: { grid: { display: false } } },
+      scales: { x: { ticks: { callback: v => '$'+v.toFixed(0) } }, y: { grid: { display: false } } },
     },
   });
 }
