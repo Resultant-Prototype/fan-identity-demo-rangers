@@ -166,7 +166,9 @@
 <body>
   <header id="app-header">
     <!-- LOGO SWAP ZONE — replace the src/text below to brand for a specific demo -->
-    <div id="logo-area">[ LOGO — replace per demo ]</div>
+    <div id="logo-area" style="border:none; padding:0;">
+      <img src="Wordmark_1CR_White_750px.png" style="height:28px;">
+    </div>
     <!-- END LOGO SWAP ZONE -->
     <span id="org-name">Belmont Racing Group</span>
   </header>
@@ -1537,7 +1539,7 @@ function renderTab4() {
 const CHART_TOOLTIPS = {
   't1-handleByDay':      'Total betting handle wagered each day. Handle = gross wagers before payouts. Responds to Date Range, Venue, and Channel filters.',
   't1-marqueeBar':       'Compares current-year handle for each marquee event against two prior peak seasons. Uses full-year unfiltered data — date filter does not affect this chart.',
-  't1-depWithDay':       'Daily deposits (funds added by bettors) vs. withdrawals (funds removed) over the selected date window.',
+  't1-depWithDay':       'Bars: daily deposits (funds added) vs. withdrawals (funds removed). Dashed line: Daily Net = deposits minus withdrawals for that day, plotted on the right axis. Positive net = more money came in than left.',
   't1-channelDonut':     'Split of total handle between mobile app and web platform wagers over the selected period.',
   't1-handleByState':    'Top 10 states by total handle wagered. Figures are extrapolated from the 500-fan sample to the full book size.',
   't2-tktOverTime':      'Monthly ticket purchases across the selected date range. Aggregated by calendar month.',

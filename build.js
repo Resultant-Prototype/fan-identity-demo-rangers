@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SRC = path.join(__dirname, 'src');
-const OUT = path.join(__dirname, 'fan-identity-demo.html');
+const OUT = path.join(__dirname, 'index.html');
 
 const shell  = fs.readFileSync(path.join(SRC, 'shell.html'),   'utf8');
 const style  = fs.readFileSync(path.join(SRC, 'style.css'),    'utf8');
