@@ -9,7 +9,7 @@
       --gray-200:   #D4D8DF;
       --gray-600:   #6B7280;
       --gray-900:   #111827;
-      --accent-red: #E63946;
+      --accent-red: #D85F52;
       --font:        'Inter', system-ui, sans-serif;
       --radius:      6px;
       --shadow-sm:   0 1px 3px rgba(0,0,0,.08);
@@ -81,13 +81,14 @@
     }
     .btn-export:hover { background: #008a7a; }
     .ban-row {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      display: grid; grid-template-columns: repeat(6, 1fr);
       gap: 16px; margin-bottom: 24px;
     }
     .ban-card {
       background: var(--white); border: 1px solid var(--gray-200);
       border-radius: var(--radius); padding: 16px 20px;
       box-shadow: var(--shadow-sm); position: relative;
+      text-align: center;
     }
     .ban-card.lead { border-top: 3px solid var(--teal); }
     .ban-label { font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
@@ -133,6 +134,11 @@
     .match-stats { display: flex; gap: 24px; flex-wrap: wrap; }
     .match-stat { font-size: 13px; color: rgba(255,255,255,.75); }
     .match-stat strong { color: var(--white); }
+    .chart-info-icon {
+      display: inline-block; margin-left: 6px;
+      font-size: 12px; color: var(--gray-600);
+      cursor: help; vertical-align: middle; line-height: 1;
+    }
     [data-tooltip] { position: relative; cursor: help; }
     [data-tooltip]::after {
       content: attr(data-tooltip);

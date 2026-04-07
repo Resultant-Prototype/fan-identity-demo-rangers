@@ -12,12 +12,14 @@ Chart.defaults.font.size = 12;
 Chart.defaults.color = '#6B7280';
 
 const PALETTE = {
-  navy:  '#1B2A4A',
-  teal:  '#00A896',
-  teal2: '#48CAB2',
-  gray:  '#D4D8DF',
-  red:   '#E63946',
-  amber: '#F4A261',
+  navy:   '#1B2A4A',   // very dark navy — dominant fills, strong anchor
+  blue:   '#2E618F',   // corporate mid-blue — default bar series (most charts)
+  slate:  '#5B7FA6',   // blue-gray — secondary/3rd categorical series
+  teal:   '#00A896',   // brand accent — HERO metric only (one teal per chart)
+  teal2:  '#48CAB2',   // lighter teal — Venn overlaps only
+  coral:  '#D85F52',   // negative / outflow
+  gray:   '#8B96A5',   // muted blue-gray — benchmarks, subordinate series
+  gray2:  '#C5CBD4',   // light gray — second benchmark, structural
 };
 
 // ═══════════════════════════════════════════════
@@ -73,7 +75,7 @@ function renderTab1() {
       plugins: { legend: { display: false } },
       scales: {
         x: { ticks: { maxTicksLimit: 12,
-               callback: (_, i) => byDayLabels[i]?.slice(5) }, grid: { display: false } },
+               callback: (value) => byDayLabels[value]?.slice(5) }, grid: { display: false } },
         y: { ticks: { callback: v => fmt.currency(v) } },
       },
     },
@@ -95,8 +97,8 @@ function renderTab1() {
       labels: marqueeLabels,
       datasets: [
         { label: 'Current Year', data: marquee2025, backgroundColor: PALETTE.teal },
-        { label: 'Peak Year 1',  data: marquee_py1, backgroundColor: PALETTE.navy },
-        { label: 'Peak Year 2',  data: marquee_py2, backgroundColor: PALETTE.gray },
+        { label: 'Peak Year 1',  data: marquee_py1, backgroundColor: PALETTE.gray },
+        { label: 'Peak Year 2',  data: marquee_py2, backgroundColor: PALETTE.gray2 },
       ],
     },
     options: {
@@ -109,24 +111,38 @@ function renderTab1() {
     },
   });
 
-  // Chart 3: Deposits vs. Withdrawals by Day (dual-line)
+  // Chart 3: Deposits vs. Withdrawals by Day (grouped bars + daily net on secondary axis)
   destroyChart('t1-depWithDay');
   const depData  = byDayLabels.map(dt => daily.filter(r=>r.date===dt).reduce((s,r)=>s+r.deposits,0));
   const withData = byDayLabels.map(dt => daily.filter(r=>r.date===dt).reduce((s,r)=>s+r.withdrawals,0));
+  const netData  = depData.map((d, i) => d - withData[i]);
   CHARTS['t1-depWithDay'] = new Chart(document.getElementById('t1-depWithDay'), {
-    type: 'line',
+    type: 'bar',
     data: {
       labels: byDayLabels,
       datasets: [
-        { label: 'Deposits',    data: depData,  borderColor: PALETTE.teal, pointRadius: 0, tension: 0.3, borderWidth: 2 },
-        { label: 'Withdrawals', data: withData, borderColor: PALETTE.red,  pointRadius: 0, tension: 0.3, borderWidth: 2 },
+        { type: 'bar',  label: 'Deposits',    data: depData,
+          backgroundColor: 'rgba(46,97,143,0.75)', yAxisID: 'y',
+          borderRadius: 2, borderSkipped: false },
+        { type: 'bar',  label: 'Withdrawals', data: withData,
+          backgroundColor: 'rgba(91,127,166,0.55)', yAxisID: 'y',
+          borderRadius: 2, borderSkipped: false },
+        { type: 'line', label: 'Daily Net',   data: netData,
+          borderColor: PALETTE.teal, backgroundColor: 'rgba(0,168,150,0.06)',
+          fill: true, yAxisID: 'y2',
+          pointRadius: 0, tension: 0.4, borderWidth: 2, borderDash: [5, 3] },
       ],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position: 'bottom' } },
-      scales: { x: { ticks: { maxTicksLimit: 10 }, grid: { display: false } },
-                y: { ticks: { callback: v => fmt.currency(v) } } },
+      scales: {
+        x:  { ticks: { maxTicksLimit: 10,
+                callback: (value) => byDayLabels[value]?.slice(5) }, grid: { display: false } },
+        y:  { position: 'left',  ticks: { callback: v => fmt.currency(v) } },
+        y2: { position: 'right', ticks: { callback: v => fmt.currency(v) },
+              grid: { drawOnChartArea: false } },
+      },
     },
   });
 
@@ -164,7 +180,7 @@ function renderTab1() {
     data: {
       labels: stateHandleSorted.map(([s]) => s),
       datasets: [{ label: 'Handle', data: stateHandleSorted.map(([,v]) => v),
-                   backgroundColor: PALETTE.teal, borderRadius: 4 }],
+                   backgroundColor: PALETTE.blue, borderRadius: 4 }],
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
@@ -238,7 +254,7 @@ function renderTab2() {
     data: {
       labels: evSorted.map(([n])=>n),
       datasets: [{ label: 'Tickets Sold', data: evSorted.map(([,v])=>v),
-                   backgroundColor: PALETTE.teal, borderRadius: 4 }],
+                   backgroundColor: PALETTE.blue, borderRadius: 4 }],
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
@@ -261,7 +277,7 @@ function renderTab2() {
       labels: evNames,
       datasets: [
         { label: 'Premium',           data: evNames.map(n => evPremMap[n]||0), backgroundColor: PALETTE.navy },
-        { label: 'General Admission', data: evNames.map(n => evGenMap[n]||0),  backgroundColor: PALETTE.teal2 },
+        { label: 'General Admission', data: evNames.map(n => evGenMap[n]||0),  backgroundColor: PALETTE.slate },
       ],
     },
     options: {
@@ -281,8 +297,8 @@ function renderTab2() {
       labels: evNames,
       datasets: [
         { label: 'Current Year', data: curr, backgroundColor: PALETTE.teal },
-        { label: 'Peak Year 1',  data: curr.map((v,i) => Math.round(v*(1.16-i*0.004))), backgroundColor: PALETTE.navy },
-        { label: 'Peak Year 2',  data: curr.map((v,i) => Math.round(v*(1.07-i*0.003))), backgroundColor: PALETTE.gray },
+        { label: 'Peak Year 1',  data: curr.map((v,i) => Math.round(v*(1.16-i*0.004))), backgroundColor: PALETTE.gray },
+        { label: 'Peak Year 2',  data: curr.map((v,i) => Math.round(v*(1.07-i*0.003))), backgroundColor: PALETTE.gray2 },
       ],
     },
     options: {
@@ -302,7 +318,7 @@ function renderTab2() {
     data: {
       labels: stateSorted.map(([s])=>s),
       datasets: [{ label: 'Buyers', data: stateSorted.map(([,v])=>v),
-                   backgroundColor: PALETTE.teal, borderRadius: 4 }],
+                   backgroundColor: PALETTE.blue, borderRadius: 4 }],
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
@@ -367,7 +383,8 @@ function renderTab3() {
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
-      scales: { x: { ticks: { maxTicksLimit: 12 }, grid: { display: false } },
+      scales: { x: { ticks: { maxTicksLimit: 12,
+                       callback: (value) => dayLabels[value]?.slice(5) }, grid: { display: false } },
                 y: { ticks: { callback: v => fmt.currency(v) } } },
     },
   });
@@ -385,7 +402,7 @@ function renderTab3() {
     data: {
       labels: VENUES,
       datasets: [{ label: 'Per-Cap Spend', data: venuePerCap,
-                   backgroundColor: [PALETTE.navy, PALETTE.teal, PALETTE.teal2], borderRadius: 4 }],
+                   backgroundColor: [PALETTE.navy, PALETTE.blue, PALETTE.slate], borderRadius: 4 }],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -405,9 +422,9 @@ function renderTab3() {
     data: {
       labels: months,
       datasets: [
-        { label: 'Food',          data: foodByMo, backgroundColor: PALETTE.navy, stack: 'cat' },
-        { label: 'Beer & Wine',   data: beerByMo, backgroundColor: PALETTE.teal, stack: 'cat' },
-        { label: 'Non-Alcoholic', data: naByMo,   backgroundColor: PALETTE.teal2, stack: 'cat' },
+        { label: 'Food',          data: foodByMo, backgroundColor: PALETTE.navy,  stack: 'cat' },
+        { label: 'Beer & Wine',   data: beerByMo, backgroundColor: PALETTE.blue,  stack: 'cat' },
+        { label: 'Non-Alcoholic', data: naByMo,   backgroundColor: PALETTE.slate, stack: 'cat' },
       ],
     },
     options: {
@@ -430,7 +447,7 @@ function renderTab3() {
     data: {
       labels: attachByEv.map(e=>e.name),
       datasets: [{ label: 'Attach Rate', data: attachByEv.map(e=>e.rate),
-                   backgroundColor: PALETTE.teal, borderRadius: 4 }],
+                   backgroundColor: PALETTE.blue, borderRadius: 4 }],
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
@@ -450,7 +467,7 @@ function renderTab3() {
     data: {
       labels: ['Premium', 'General Admission'],
       datasets: [{ label: 'Per-Cap Spend', data: [premPC, genPC],
-                   backgroundColor: [PALETTE.navy, PALETTE.teal2], borderRadius: 4 }],
+                   backgroundColor: [PALETTE.navy, PALETTE.slate], borderRadius: 4 }],
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
@@ -478,8 +495,18 @@ function renderTab4() {
   const f = STATE.tab4;
   const fans = filterFans(f, 'tab4');
   const linkedFans = fans.filter(fan => fan.global_fan_id);
-  const avgXCS = linkedFans.length > 0 ? linkedFans.reduce((s,fan)=>s+fan.total_cross_channel_spend,0)/linkedFans.length : 0;
 
+  // Cross-channel spend uses daily arrays so it responds to the date filter
+  const dailyAdw = filterDaily(DAILY_ADW, f);
+  const dailyTkt = filterDaily(DAILY_TICKETS, f);
+  const dailyFnb = filterDaily(DAILY_FNB, f);
+  const periodHandle    = dailyAdw.reduce((s,r) => s + r.handle, 0);
+  const periodTicketRev = dailyTkt.reduce((s,r) => s + r.gross_revenue, 0);
+  const periodFnbRev    = dailyFnb.reduce((s,r) => s + r.total_revenue, 0);
+  const LINKED_TOTAL    = 94200;
+  const avgXCS = LINKED_TOTAL > 0 ? (periodHandle + periodTicketRev + periodFnbRev) / LINKED_TOTAL : 0;
+
+  // Identity metrics below are full-season by definition — date range doesn't apply
   const adwFans   = FANS.filter(fan => fan.adw_fan_id);
   const tickFans  = FANS.filter(fan => fan.ticketing_fan_id);
   const adwAndTkt = FANS.filter(fan => fan.adw_fan_id && fan.ticketing_fan_id);
@@ -492,11 +519,10 @@ function renderTab4() {
   const avgConf = linkedFans.length > 0
     ? linkedFans.reduce((s,fan)=>s+(fan.match_confidence_score||0),0)/linkedFans.length
     : 0;
-  const LINKED_TOTAL = 94200;
 
   renderBANs('t4-bans', [
     { label: 'Combined Cross-Channel Spend per Fan', value: fmt.currency(avgXCS), lead: true,
-      tooltip: 'This figure was not available before identity resolution connected your wagering, ticketing, and F&B records.' },
+      tooltip: 'Total ADW handle + ticket revenue + F&B revenue in selected period, divided by total linked fans. Changes with date range.' },
     { label: '% ADW Bettors Who Also Buy Tickets', value: fmt.pct(adwAlsoBuyTkt),
       tooltip: 'Active ADW bettors = accounts with at least one wager in the selected date window. Cross-referenced with ticketing system via P3RL linking.' },
     { label: '% Ticket Buyers with No Wagering History', value: fmt.pct(tktNoWager),
@@ -527,13 +553,16 @@ function renderTab4() {
           { sets: ['ADW Wagering', 'Ticket Sales', 'Food & Beverage'], value: VENN_POP.all_three },
         ],
         backgroundColor: [
-          'rgba(27,42,74,.6)',
-          'rgba(0,168,150,.6)',
-          'rgba(72,202,178,.6)',
-          'rgba(0,100,120,.5)',
-          'rgba(0,90,90,.5)',
-          'rgba(0,140,130,.5)',
-          'rgba(0,168,150,.85)',
+          // Single-source regions — three distinct circles
+          'rgba(27,42,74,0.58)',      // ADW only — navy
+          'rgba(46,97,143,0.58)',     // Ticket only — blue
+          'rgba(0,168,150,0.62)',     // F&B only — teal
+          // Two-circle overlaps — plausible midpoint blends
+          'rgba(36,70,108,0.65)',     // ADW ∩ Ticket — navy-blue
+          'rgba(14,88,97,0.65)',      // ADW ∩ F&B — navy-teal
+          'rgba(23,130,146,0.62)',    // Ticket ∩ F&B — blue-teal
+          // Center — all three, darkest to signal maximum overlap
+          'rgba(20,72,98,0.80)',      // ADW ∩ Ticket ∩ F&B
         ],
       }],
     },
@@ -549,6 +578,12 @@ function renderTab4() {
             },
           },
         },
+      },
+      scales: {
+        // x-scale drives the intersection value labels (numbers inside the circles)
+        x: { ticks: { color: '#ffffff', font: { size: 12, weight: '600' } } },
+        // y-scale drives the set name labels (ADW Wagering, Ticket Sales, F&B) — keep dark
+        y: { ticks: { color: '#374151', font: { size: 12 } } },
       },
     },
   });
@@ -566,7 +601,7 @@ function renderTab4() {
       datasets: [{
         label: 'Linked Fans',
         data: scatterData,
-        backgroundColor: 'rgba(0,168,150,.5)',
+        backgroundColor: 'rgba(46,97,143,0.55)',
         pointRadius: 4,
       }],
     },
@@ -598,8 +633,8 @@ function renderTab4() {
       labels: topN.map((_, i) => `Fan #${i+1}`),
       datasets: [
         { label: 'ADW Handle',   data: topN.map(fan=>fan.adw_handle||0),   backgroundColor: PALETTE.navy,  stack: 's' },
-        { label: 'Ticket Spend', data: topN.map(fan=>fan.ticket_spend||0), backgroundColor: PALETTE.teal,  stack: 's' },
-        { label: 'F&B Spend',    data: topN.map(fan=>fan.fnb_spend||0),    backgroundColor: PALETTE.teal2, stack: 's' },
+        { label: 'Ticket Spend', data: topN.map(fan=>fan.ticket_spend||0), backgroundColor: PALETTE.blue,  stack: 's' },
+        { label: 'F&B Spend',    data: topN.map(fan=>fan.fnb_spend||0),    backgroundColor: PALETTE.slate, stack: 's' },
       ],
     },
     options: {
@@ -621,7 +656,7 @@ function renderTab4() {
     data: {
       labels: VENUES,
       datasets: [
-        { label: 'Linked',        data: venueLinked, backgroundColor: PALETTE.teal, stack: 's' },
+        { label: 'Linked',        data: venueLinked, backgroundColor: PALETTE.blue, stack: 's' },
         { label: 'Single-Source', data: venueSingle, backgroundColor: PALETTE.gray, stack: 's' },
       ],
     },
@@ -642,7 +677,7 @@ function renderTab4() {
     data: {
       labels: geoSorted.map(([s])=>s),
       datasets: [{ label: 'Linked Fans', data: geoSorted.map(([,v])=>v),
-                   backgroundColor: PALETTE.teal, borderRadius: 4 }],
+                   backgroundColor: PALETTE.blue, borderRadius: 4 }],
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
@@ -651,3 +686,29 @@ function renderTab4() {
     },
   });
 }
+
+// ═══════════════════════════════════════════════
+// CHART TOOLTIPS
+// ═══════════════════════════════════════════════
+const CHART_TOOLTIPS = {
+  't1-handleByDay':      'Total betting handle wagered each day. Handle = gross wagers before payouts. Responds to Date Range, Venue, and Channel filters.',
+  't1-marqueeBar':       'Compares current-year handle for each marquee event against two prior peak seasons. Uses full-year unfiltered data — date filter does not affect this chart.',
+  't1-depWithDay':       'Daily deposits (funds added by bettors) vs. withdrawals (funds removed) over the selected date window.',
+  't1-channelDonut':     'Split of total handle between mobile app and web platform wagers over the selected period.',
+  't1-handleByState':    'Top 10 states by total handle wagered. Figures are extrapolated from the 500-fan sample to the full book size.',
+  't2-tktOverTime':      'Monthly ticket purchases across the selected date range. Aggregated by calendar month.',
+  't2-soldByEvent':      'Total tickets sold per marquee event for the full year. Uses unfiltered data — reflects all-season totals regardless of date filter.',
+  't2-revByEventSeat':   'Gross ticket revenue per marquee event, split between Premium and General Admission seat categories.',
+  't2-historicalMarquee':'Current-year total ticket revenue per marquee event vs. two prior peak seasons.',
+  't2-buyersByState':    'Top 10 states by number of unique ticket purchasers. Based on filtered fan records.',
+  't3-revByDay':         'Total F&B revenue per day over the selected date range. Responds to Venue, Date Range, and F&B Category filters.',
+  't3-perCapVenue':      'Average F&B spend per visitor who made at least one F&B transaction, broken out by venue. Uses full-year data.',
+  't3-revByCategory':    'Monthly F&B revenue stacked by category (Food, Beer & Wine, Non-Alcoholic). Responds to date and venue filters.',
+  't3-attachByEvent':    'Percentage of ticket buyers who also made an F&B purchase at each marquee event. Attach rate = F&B visitors / tickets sold.',
+  't3-perCapSeat':       'Average F&B spend per visit for fans in Premium vs. General Admission seating. Based on filtered fan records.',
+  't4-venn':             'Fan overlap across the three source systems. Hover over each region to see population count. Figures represent total book, not just the 500-fan sample.',
+  't4-vipScatter':       'Each dot is a linked fan. X-axis = ADW VIP tier; Y-axis = total cross-channel spend. Shows whether higher ADW tiers correspond to higher total fan value.',
+  't4-topDecile':        'Top 10 fans by total cross-channel spend. Bars are stacked by ADW handle, ticket spend, and F&B spend to show where high-value fans generate revenue.',
+  't4-linkageByVenue':   'For each venue, the proportion of fans successfully linked across two or more source systems (Linked) vs. those appearing in only one system (Single-Source).',
+  't4-geoLinked':        'Top 10 home states for linked fans — fans whose identity was resolved across at least two source systems.',
+};

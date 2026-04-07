@@ -13,7 +13,7 @@ const STATE = {
 const DATE_PRESETS = {
   last_30:      () => { const e=new Date('2025-12-31'); const s=new Date(e); s.setDate(s.getDate()-30); return [s,e]; },
   last_90:      () => { const e=new Date('2025-12-31'); const s=new Date(e); s.setDate(s.getDate()-90); return [s,e]; },
-  current_season: () => [new Date('2025-01-01'), new Date('2025-12-31')],
+  current_season: () => [new Date('2025-05-01'), new Date('2025-10-31')],
   full_year:    () => [new Date('2025-01-01'), new Date('2025-12-31')],
 };
 

@@ -90,6 +90,26 @@ document.getElementById('t3-reset').addEventListener('click', () => resetTab('ta
 document.getElementById('t4-reset').addEventListener('click', () => resetTab('tab4'));
 
 // ═══════════════════════════════════════════════
+// CHART TOOLTIP INJECTION
+// ═══════════════════════════════════════════════
+
+function applyChartTooltips() {
+  Object.entries(CHART_TOOLTIPS).forEach(([canvasId, tipText]) => {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const card = canvas.closest('.chart-card');
+    if (!card) return;
+    const titleEl = card.querySelector('.chart-title');
+    if (!titleEl || titleEl.querySelector('.chart-info-icon')) return;
+    const icon = document.createElement('span');
+    icon.className = 'chart-info-icon';
+    icon.setAttribute('data-tooltip', tipText);
+    icon.textContent = 'ⓘ';
+    titleEl.appendChild(icon);
+  });
+}
+
+// ═══════════════════════════════════════════════
 // RENDER DISPATCHER
 // ═══════════════════════════════════════════════
 
@@ -98,6 +118,7 @@ function renderTab(tabId) {
   else if (tabId === 'tab2') renderTab2();
   else if (tabId === 'tab3') renderTab3();
   else if (tabId === 'tab4') renderTab4();
+  applyChartTooltips();
 }
 
 // Initial render
