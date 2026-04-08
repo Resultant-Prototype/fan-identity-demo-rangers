@@ -153,7 +153,7 @@ console.log('DAILY_TICKETS OK — total ticket rev $' + (totalTktRev / 1e6).toFi
 
 const US_STATES = ['NY','NJ','PA','CT','MA','FL','CA','TX','IL','OH','MD','VA','NC','GA','MI'];
 const STATE_WEIGHTS = [25,12,8,6,5,5,4,4,3,3,3,3,2,2,2];
-const VIP_TIERS = ['platinum','gold','silver','standard'];
+const VIP_TIERS = ['standard','silver','gold','platinum'];
 const CATEGORIES = ['food','beer_wine','non_alc'];
 
 function weightedPick(items, weights, seed) {
