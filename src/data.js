@@ -151,8 +151,9 @@ console.assert(DAILY_FNB.length === 1095, 'DAILY_FNB row count');
 const totalTktRev = DAILY_TICKETS.reduce((s, r) => s + r.gross_revenue, 0);
 console.log('DAILY_TICKETS OK — total ticket rev $' + (totalTktRev / 1e6).toFixed(1) + 'M');
 
-const US_STATES = ['NY','NJ','PA','CT','MA','FL','CA','TX','IL','OH','MD','VA','NC','GA','MI'];
-const STATE_WEIGHTS = [25,12,8,6,5,5,4,4,3,3,3,3,2,2,2];
+// NYRA fan base is overwhelmingly NY-based (~80%), with NJ/CT/PA/FL as secondary markets
+const US_STATES = ['NY','NJ','CT','PA','FL','MA','MD','OH','VA','CA','TX','IL','NC','GA','MI'];
+const STATE_WEIGHTS = [200,15,8,6,5,4,2,2,1,1,1,1,1,1,1];
 const VIP_TIERS = ['standard','silver','gold','platinum'];
 const CATEGORIES = ['food','beer_wine','non_alc'];
 
