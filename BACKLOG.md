@@ -26,7 +26,7 @@ Items are roughly prioritized. Reference the src/ file most relevant to each fix
 
 - [x] **Top Decile: enrich fan labels** — replace "Fan #1" with `Plat • NY` (VIP tier abbreviation + home state). Makes the "who are these fans" question immediately answerable. Affects: `src/charts.js` (t4-topDecile label mapping).
 
-- [ ] **Top Decile: total value label at bar end** — show each fan's total XCS as a dollar label at the right end of their bar. Eliminates the need to estimate from the x-axis. Implement via Chart.js `afterDraw` plugin or datalabels if available. Affects: `src/charts.js` (t4-topDecile options).
+- [x] **Top Decile: total value label at bar end** — show each fan's total XCS as a dollar label at the right end of their bar. Eliminates the need to estimate from the x-axis. Implement via Chart.js `afterDraw` plugin or datalabels if available. Affects: `src/charts.js` (t4-topDecile options).
 
 - [ ] **Top Decile: average fan reference line** — add a vertical dotted line at the average XCS across all linked fans. The contrast between top decile bars and the average line is the core insight of this chart. Implement as a second dataset with a single point spanning the y-axis, or via Chart.js annotation. Affects: `src/charts.js` (t4-topDecile).
 

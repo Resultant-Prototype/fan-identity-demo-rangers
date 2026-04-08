@@ -691,12 +691,30 @@ function renderTab4() {
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 80 } },
       plugins: { legend: { position: 'bottom' } },
       scales: {
         x: { stacked: true, ticks: { callback: v=>fmt.currency(v) } },
         y: { stacked: true, grid: { display: false } },
       },
     },
+    plugins: [{
+      id: 'topDecileTotals',
+      afterDraw(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '11px "Inter", system-ui, sans-serif';
+        ctx.fillStyle = '#1B2A4A';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        const lastMeta = chart.getDatasetMeta(chart.data.datasets.length - 1);
+        lastMeta.data.forEach((bar, i) => {
+          const total = chart.data.datasets.reduce((s, ds) => s + (ds.data[i] || 0), 0);
+          ctx.fillText(fmt.currency(total), bar.x + 5, bar.y);
+        });
+        ctx.restore();
+      },
+    }],
   });
 
   // Single-Source vs. Linked by Venue (stacked bar)
