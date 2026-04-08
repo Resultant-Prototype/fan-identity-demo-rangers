@@ -177,11 +177,12 @@
     }
     .map-tooltip {
       position: absolute;
-      background: rgba(27,42,74,0.92);
+      background: rgba(27,42,74,0.95);
       color: #fff;
-      padding: 5px 10px;
+      padding: 8px 12px;
       border-radius: 4px;
       font-size: 11px;
+      line-height: 1.7;
       pointer-events: none;
       white-space: nowrap;
       z-index: 200;
@@ -1114,9 +1115,24 @@ function renderTab1() {
   });
 
   // Map: ADW bettor distribution by state
-  const adwStateMap = {};
-  fans.forEach(fan => { if (fan.adw_state) adwStateMap[fan.adw_state] = (adwStateMap[fan.adw_state] || 0) + 1; });
-  renderStateMap('t1-map', adwStateMap);
+  const adwStateDataMap = {};
+  fans.forEach(fan => {
+    if (!fan.adw_state) return;
+    const s = fan.adw_state;
+    if (!adwStateDataMap[s]) adwStateDataMap[s] = { count: 0, handle: 0 };
+    adwStateDataMap[s].count++;
+    adwStateDataMap[s].handle += fan.adw_handle || 0;
+  });
+  const totalAdwFans = fans.length || 1;
+  renderStateMap('t1-map', adwStateDataMap, (abbr, name, d) => {
+    if (!d || !d.count) return `<strong>${name}</strong><br><span style="opacity:.7">No ADW bettors</span>`;
+    const pct = (d.count / totalAdwFans * 100).toFixed(1);
+    return [
+      `<strong>${name}</strong>`,
+      `${fmt.num(d.count)} bettors &nbsp;·&nbsp; ${pct}% of total`,
+      `Handle: ${fmt.currency(d.handle)}`,
+    ].join('<br>');
+  });
 }
 
 // ═══════════════════════════════════════════════
@@ -1759,10 +1775,32 @@ function renderTab4() {
     },
   });
 
-  // Map: linked fan distribution by state
-  const linkedStateMap = {};
-  linkedFans.forEach(fan => { if (fan.home_state) linkedStateMap[fan.home_state] = (linkedStateMap[fan.home_state] || 0) + 1; });
-  renderStateMap('t4-map', linkedStateMap);
+  // Map: linked fan distribution by state — executive KPI tooltip
+  const linkedStateDataMap = {};
+  linkedFans.forEach(fan => {
+    const s = fan.home_state;
+    if (!s) return;
+    if (!linkedStateDataMap[s]) linkedStateDataMap[s] = { count: 0, xcs: 0, topTier: 0 };
+    linkedStateDataMap[s].count++;
+    linkedStateDataMap[s].xcs += fan.total_cross_channel_spend || 0;
+    if (fan.adw_vip_tier === 'platinum' || fan.adw_vip_tier === 'gold') linkedStateDataMap[s].topTier++;
+  });
+  const totalLinkedFans = linkedFans.length || 1;
+  renderStateMap('t4-map', linkedStateDataMap, (abbr, name, d) => {
+    if (!d || !d.count) return `<strong>${name}</strong><br><span style="opacity:.7">No linked fans</span>`;
+    const fanPct    = (d.count / totalLinkedFans * 100).toFixed(1);
+    const avgState  = fmt.currency(d.xcs / d.count);
+    const avgNat    = fmt.currency(avgFanXCS);
+    const topTierPct = (d.topTier / d.count * 100).toFixed(0);
+    const revSign   = d.xcs / d.count > avgFanXCS ? '▲' : '▼';
+    return [
+      `<strong>${name}</strong>`,
+      `${fmt.num(d.count)} fans &nbsp;·&nbsp; ${fanPct}% of base`,
+      `Revenue pool: ${fmt.currency(d.xcs)}`,
+      `Avg XCS: ${avgState} ${revSign} (nat. avg ${avgNat})`,
+      `Gold+ fans: ${topTierPct}%`,
+    ].join('<br>');
+  });
 }
 
 // ═══════════════════════════════════════════════
@@ -1794,7 +1832,9 @@ const STATE_NAMES = {
   VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',
 };
 
-async function renderStateMap(containerId, stateCountMap) {
+// stateDataMap: { [abbr]: { count, ...rest } }
+// tooltipFn: (abbr, stateName, data) => HTML string
+async function renderStateMap(containerId, stateDataMap, tooltipFn) {
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = '';
@@ -1820,10 +1860,10 @@ async function renderStateMap(containerId, stateCountMap) {
     .fitSize([W, H], topojson.feature(us, us.objects.states));
   const pathGen = d3.geoPath().projection(projection);
 
-  const maxVal = Math.max(...Object.values(stateCountMap), 1);
+  const maxVal = Math.max(...Object.values(stateDataMap).map(d => d.count || 0), 1);
 
   function stateColor(abbr) {
-    const t = (stateCountMap[abbr] || 0) / maxVal;
+    const t = ((stateDataMap[abbr] || {}).count || 0) / maxVal;
     // Light ice blue (#E8F4FD) → brand navy (#1B2A4A)
     const r = Math.round(232 - 205 * t);
     const g = Math.round(244 - 202 * t);
@@ -1854,13 +1894,13 @@ async function renderStateMap(containerId, stateCountMap) {
     .attr('stroke', '#fff')
     .attr('stroke-width', 0.6)
     .on('mousemove', function(event, d) {
-      const abbr  = FIPS_TO_ABBR[String(d.id).padStart(2, '0')] || '—';
-      const name  = STATE_NAMES[abbr] || abbr;
-      const count = stateCountMap[abbr] || 0;
+      const abbr = FIPS_TO_ABBR[String(d.id).padStart(2, '0')] || '—';
+      const name = STATE_NAMES[abbr] || abbr;
+      const data = stateDataMap[abbr] || null;
       tip.style('display', 'block')
          .style('left', (event.offsetX + 12) + 'px')
          .style('top',  (event.offsetY - 32) + 'px')
-         .html(`<strong>${name}</strong>: ${fmt.num(count)} fans`);
+         .html(tooltipFn(abbr, name, data));
     })
     .on('mouseleave', () => tip.style('display', 'none'));
 
