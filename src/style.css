@@ -151,3 +151,42 @@
       transition: opacity .15s;
     }
     [data-tooltip]:hover::after { opacity: 1; }
+
+    /* ── Choropleth Map ── */
+    .map-container {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+    }
+    .map-container svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .map-tooltip {
+      position: absolute;
+      background: rgba(27,42,74,0.92);
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 200;
+      display: none;
+    }
+    .map-legend {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      position: absolute;
+      bottom: 8px;
+      right: 12px;
+      font-size: 10px;
+      color: var(--gray-600);
+    }
+    .map-legend-bar {
+      width: 80px;
+      height: 8px;
+      border-radius: 2px;
+    }

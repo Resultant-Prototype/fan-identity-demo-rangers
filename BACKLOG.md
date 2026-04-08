@@ -30,7 +30,7 @@ Items are roughly prioritized. Reference the src/ file most relevant to each fix
 
 - [x] **Top Decile: average fan reference line** — add a vertical dotted line at the average XCS across all linked fans. The contrast between top decile bars and the average line is the core insight of this chart. Implement as a second dataset with a single point spanning the y-axis, or via Chart.js annotation. Affects: `src/charts.js` (t4-topDecile).
 
-- [ ] **Add choropleth map (fan geography by state) to ADW tab and Fan Identity tab**
+- [x] **Add choropleth map (fan geography by state) to ADW tab and Fan Identity tab**
 
 ## Epic — Circuit Analytics (Multi-Venue Fan Tracking)
 

@@ -225,6 +225,11 @@ function renderTab1() {
       scales: { x: { ticks: { callback: v => fmt.currency(v) } }, y: { grid: { display: false } } },
     },
   });
+
+  // Map: ADW bettor distribution by state
+  const adwStateMap = {};
+  fans.forEach(fan => { if (fan.adw_state) adwStateMap[fan.adw_state] = (adwStateMap[fan.adw_state] || 0) + 1; });
+  renderStateMap('t1-map', adwStateMap);
 }
 
 // ═══════════════════════════════════════════════
@@ -866,6 +871,126 @@ function renderTab4() {
       scales: { y: { grid: { display: false } } },
     },
   });
+
+  // Map: linked fan distribution by state
+  const linkedStateMap = {};
+  linkedFans.forEach(fan => { if (fan.home_state) linkedStateMap[fan.home_state] = (linkedStateMap[fan.home_state] || 0) + 1; });
+  renderStateMap('t4-map', linkedStateMap);
+}
+
+// ═══════════════════════════════════════════════
+// CHOROPLETH MAP
+// ═══════════════════════════════════════════════
+
+const FIPS_TO_ABBR = {
+  '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT',
+  '10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL',
+  '18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD',
+  '25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE',
+  '32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY','37':'NC','38':'ND',
+  '39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC','46':'SD',
+  '47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV',
+  '55':'WI','56':'WY',
+};
+
+const STATE_NAMES = {
+  AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',
+  CO:'Colorado',CT:'Connecticut',DE:'Delaware',DC:'D.C.',FL:'Florida',
+  GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',
+  IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',
+  MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',
+  MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',
+  NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',
+  NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',
+  OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',
+  SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',
+  VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',
+};
+
+async function renderStateMap(containerId, stateCountMap) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (!window._usStatesData) {
+    try {
+      window._usStatesData = await fetch(
+        'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json'
+      ).then(r => r.json());
+    } catch {
+      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8B96A5;font-size:12px;">Map unavailable (offline)</div>';
+      return;
+    }
+  }
+
+  const us = window._usStatesData;
+  const stateFeatures = topojson.feature(us, us.objects.states).features;
+
+  const W = Math.max(container.clientWidth || 0, 300);
+  const H = container.clientHeight || 260;
+
+  const projection = d3.geoAlbersUsa()
+    .fitSize([W, H], topojson.feature(us, us.objects.states));
+  const pathGen = d3.geoPath().projection(projection);
+
+  const maxVal = Math.max(...Object.values(stateCountMap), 1);
+
+  function stateColor(abbr) {
+    const t = (stateCountMap[abbr] || 0) / maxVal;
+    // Light ice blue (#E8F4FD) → brand navy (#1B2A4A)
+    const r = Math.round(232 - 205 * t);
+    const g = Math.round(244 - 202 * t);
+    const b = Math.round(253 - 179 * t);
+    return `rgb(${r},${g},${b})`;
+  }
+
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet')
+    .style('width', '100%')
+    .style('height', '100%');
+
+  const tip = d3.select(container)
+    .append('div')
+    .attr('class', 'map-tooltip');
+
+  svg.selectAll('path')
+    .data(stateFeatures)
+    .enter()
+    .append('path')
+    .attr('d', pathGen)
+    .attr('fill', d => {
+      const abbr = FIPS_TO_ABBR[String(d.id).padStart(2, '0')];
+      return stateColor(abbr);
+    })
+    .attr('stroke', '#fff')
+    .attr('stroke-width', 0.6)
+    .on('mousemove', function(event, d) {
+      const abbr  = FIPS_TO_ABBR[String(d.id).padStart(2, '0')] || '—';
+      const name  = STATE_NAMES[abbr] || abbr;
+      const count = stateCountMap[abbr] || 0;
+      tip.style('display', 'block')
+         .style('left', (event.offsetX + 12) + 'px')
+         .style('top',  (event.offsetY - 32) + 'px')
+         .html(`<strong>${name}</strong>: ${fmt.num(count)} fans`);
+    })
+    .on('mouseleave', () => tip.style('display', 'none'));
+
+  // Gradient legend
+  const legendId = containerId + '-grad';
+  const defs = svg.append('defs');
+  const grad = defs.append('linearGradient').attr('id', legendId);
+  grad.append('stop').attr('offset', '0%').attr('stop-color', stateColor(null));
+  grad.append('stop').attr('offset', '100%').attr('stop-color', '#1B2A4A');
+
+  const leg = svg.append('g').attr('transform', `translate(${W - 110}, ${H - 22})`);
+  leg.append('rect').attr('width', 80).attr('height', 8)
+     .attr('rx', 2).attr('fill', `url(#${legendId})`);
+  leg.append('text').attr('y', 18).attr('font-size', 9)
+     .attr('fill', '#8B96A5').text('Fewer');
+  leg.append('text').attr('x', 80).attr('y', 18).attr('font-size', 9)
+     .attr('text-anchor', 'end').attr('fill', '#8B96A5').text('More');
 }
 
 // ═══════════════════════════════════════════════
