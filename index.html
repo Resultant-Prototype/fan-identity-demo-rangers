@@ -1520,6 +1520,9 @@ function renderTab4() {
     .sort((a,b)=>b.total_cross_channel_spend-a.total_cross_channel_spend)
     .slice(0, Math.max(1, Math.floor(linkedFans.length*0.10)));
   const topN = topFans.slice(0, 10);
+  const avgXCS = linkedFans.length
+    ? linkedFans.reduce((s, f) => s + (f.total_cross_channel_spend || 0), 0) / linkedFans.length
+    : 0;
   const TIER_ABBREV = { platinum: 'Plat', gold: 'Gold', silver: 'Silv', standard: 'Std' };
   CHARTS['t4-topDecile'] = new Chart(document.getElementById('t4-topDecile'), {
     type: 'bar',
@@ -1558,6 +1561,26 @@ function renderTab4() {
           const total = chart.data.datasets.reduce((s, ds) => s + (ds.data[i] || 0), 0);
           ctx.fillText(fmt.currency(total), bar.x + 5, bar.y);
         });
+
+        // Average fan reference line
+        if (avgXCS > 0) {
+          const xPx = chart.scales.x.getPixelForValue(avgXCS);
+          const { top, bottom } = chart.chartArea;
+          ctx.setLineDash([5, 4]);
+          ctx.strokeStyle = '#8B96A5';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(xPx, top);
+          ctx.lineTo(xPx, bottom);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.font = '10px "Inter", system-ui, sans-serif';
+          ctx.fillStyle = '#8B96A5';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(`Avg: ${fmt.currency(avgXCS)}`, xPx, top + 4);
+        }
+
         ctx.restore();
       },
     }],
