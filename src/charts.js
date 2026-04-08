@@ -674,7 +674,7 @@ function renderTab4() {
     .sort((a,b)=>b.total_cross_channel_spend-a.total_cross_channel_spend)
     .slice(0, Math.max(1, Math.floor(linkedFans.length*0.10)));
   const topN = topFans.slice(0, 10);
-  const avgXCS = linkedFans.length
+  const avgFanXCS = linkedFans.length
     ? linkedFans.reduce((s, f) => s + (f.total_cross_channel_spend || 0), 0) / linkedFans.length
     : 0;
   const TIER_ABBREV = { platinum: 'Plat', gold: 'Gold', silver: 'Silv', standard: 'Std' };
@@ -717,8 +717,8 @@ function renderTab4() {
         });
 
         // Average fan reference line
-        if (avgXCS > 0) {
-          const xPx = chart.scales.x.getPixelForValue(avgXCS);
+        if (avgFanXCS > 0) {
+          const xPx = chart.scales.x.getPixelForValue(avgFanXCS);
           const { top, bottom } = chart.chartArea;
           ctx.setLineDash([5, 4]);
           ctx.strokeStyle = '#8B96A5';
@@ -732,7 +732,7 @@ function renderTab4() {
           ctx.fillStyle = '#8B96A5';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'top';
-          ctx.fillText(`Avg: ${fmt.currency(avgXCS)}`, xPx, top + 4);
+          ctx.fillText(`Avg: ${fmt.currency(avgFanXCS)}`, xPx, top + 4);
         }
 
         ctx.restore();
