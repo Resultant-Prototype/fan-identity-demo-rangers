@@ -1864,7 +1864,9 @@ async function renderStateMap(containerId, stateDataMap, tooltipFn) {
   const maxVal = Math.max(...Object.values(stateDataMap).map(d => d.count || 0), 1);
 
   function stateColor(abbr) {
-    const t = ((stateDataMap[abbr] || {}).count || 0) / maxVal;
+    const count = ((stateDataMap[abbr] || {}).count || 0);
+    // Log scale so secondary states aren't invisible when one state dominates
+    const t = count > 0 ? Math.log(count + 1) / Math.log(maxVal + 1) : 0;
     // Light ice blue (#E8F4FD) → brand navy (#1B2A4A)
     const r = Math.round(232 - 205 * t);
     const g = Math.round(244 - 202 * t);
@@ -1919,6 +1921,8 @@ async function renderStateMap(containerId, stateDataMap, tooltipFn) {
      .attr('fill', '#8B96A5').text('Fewer');
   leg.append('text').attr('x', 80).attr('y', 18).attr('font-size', 9)
      .attr('text-anchor', 'end').attr('fill', '#8B96A5').text('More');
+  leg.append('text').attr('x', 40).attr('y', 26).attr('font-size', 8)
+     .attr('text-anchor', 'middle').attr('fill', '#8B96A5').text('log scale');
 }
 
 // ═══════════════════════════════════════════════
