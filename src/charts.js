@@ -103,7 +103,20 @@ function renderTab1() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            afterBody: items => {
+              const i = items[0]?.dataIndex;
+              const curr = marquee2025[i], py1 = marquee_py1[i], py2 = marquee_py2[i];
+              const d1 = py1 > 0 ? ((curr-py1)/py1*100).toFixed(1) : '—';
+              const d2 = py2 > 0 ? ((curr-py2)/py2*100).toFixed(1) : '—';
+              return [`vs. Peak Year 1: ${d1}%`, `vs. Peak Year 2: ${d2}%`];
+            },
+          },
+        },
+      },
       scales: {
         x: { ticks: { maxRotation: 30 } },
         y: { ticks: { callback: v => fmt.currency(v) } },
@@ -135,7 +148,20 @@ function renderTab1() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.label === 'Daily Net') {
+                const sign = ctx.raw >= 0 ? '+' : '';
+                return `Daily Net: ${sign}${fmt.currency(ctx.raw)}`;
+              }
+              return `${ctx.dataset.label}: ${fmt.currency(ctx.raw)}`;
+            },
+          },
+        },
+      },
       scales: {
         x:  { ticks: { maxTicksLimit: 10,
                 callback: (value) => byDayLabels[value]?.slice(5) }, grid: { display: false } },
@@ -158,7 +184,18 @@ function renderTab1() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const pct = total > 0 ? (ctx.raw / total * 100).toFixed(1) : '0';
+              return `${ctx.label}: ${fmt.currency(ctx.raw)} (${pct}%)`;
+            },
+          },
+        },
+      },
       cutout: '65%',
     },
   });
@@ -282,7 +319,17 @@ function renderTab2() {
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            afterBody: items => {
+              const total = items.reduce((s, item) => s + item.raw, 0);
+              return [`Total: ${fmt.currency(total)}`];
+            },
+          },
+        },
+      },
       scales: { x: { stacked: true, ticks: { callback: v => fmt.currency(v) } },
                 y: { stacked: true, grid: { display: false } } },
     },
@@ -429,7 +476,17 @@ function renderTab3() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            afterBody: items => {
+              const total = items.reduce((s, item) => s + item.raw, 0);
+              return [`Total: ${fmt.currency(total)}`];
+            },
+          },
+        },
+      },
       scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: v=>fmt.currency(v) } } },
     },
   });
@@ -695,7 +752,24 @@ function renderTab4() {
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
       layout: { padding: { right: 80 } },
-      plugins: { legend: { position: 'bottom' } },
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            title: items => {
+              const fan = topN[items[0]?.dataIndex];
+              if (!fan) return '';
+              const tier  = TIER_ABBREV[fan.adw_vip_tier] || '—';
+              const state = fan.adw_state || fan.home_state || '—';
+              return `${tier} • ${state}`;
+            },
+            afterBody: items => {
+              const total = items.reduce((s, item) => s + item.raw, 0);
+              return [`Total XCS: ${fmt.currency(total)}`];
+            },
+          },
+        },
+      },
       scales: {
         x: { stacked: true, ticks: { callback: v=>fmt.currency(v) } },
         y: { stacked: true, grid: { display: false } },
@@ -755,7 +829,21 @@ function renderTab4() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            afterBody: items => {
+              const i = items[0]?.dataIndex;
+              const linked = venueLinked[i] || 0;
+              const single = venueSingle[i] || 0;
+              const total  = linked + single;
+              const pct = total > 0 ? (linked / total * 100).toFixed(1) : '0';
+              return [`Linked Rate: ${pct}%`];
+            },
+          },
+        },
+      },
       scales: { x: { stacked: true }, y: { stacked: true } },
     },
   });
