@@ -590,28 +590,75 @@ function renderTab4() {
 
   // VIP Tier vs. Cross-Channel Spend (scatter)
   destroyChart('t4-vipScatter');
-  const tierOrder = { platinum: 4, gold: 3, silver: 2, standard: 1 };
-  const scatterData = linkedFans.map(fan => ({
-    x: tierOrder[fan.adw_vip_tier] || 1,
-    y: fan.total_cross_channel_spend,
-  })).filter(p => p.x && p.y);
+  const tierOrder   = { platinum: 4, gold: 3, silver: 2, standard: 1 };
+  const tierMeta    = {
+    platinum: { label: 'Platinum', color: 'rgba(190,195,205,0.85)' },
+    gold:     { label: 'Gold',     color: 'rgba(232,160,32,0.72)'  },
+    silver:   { label: 'Silver',   color: 'rgba(91,127,166,0.70)'  },
+    standard: { label: 'Standard', color: 'rgba(27,42,74,0.70)'    },
+  };
+  const tierDatasets = ['standard','silver','gold','platinum'].map(tier => ({
+    label: tierMeta[tier].label,
+    data: linkedFans
+      .filter(fan => fan.adw_vip_tier === tier && fan.total_cross_channel_spend)
+      .map((fan, i) => ({
+        x:       tierOrder[tier] + ((((fan.total_cross_channel_spend * 7 + i * 13) % 100) / 100) - 0.5) * 0.36,
+        y:       fan.total_cross_channel_spend,
+        state:   fan.adw_state   || fan.home_state || '—',
+        venue:   fan.adw_venue   || fan.primary_venue || '—',
+        adw:     fan.adw_handle  || 0,
+        tickets: fan.ticket_spend || 0,
+        fnb:     fan.fnb_spend   || 0,
+      })),
+    backgroundColor: tierMeta[tier].color,
+    pointRadius: 4,
+  }));
+
+  // Mean marker datasets — one horizontal dash per tier showing avg XCS
+  const meanDatasets = ['standard','silver','gold','platinum'].map(tier => {
+    const fans = linkedFans.filter(f => f.adw_vip_tier === tier && f.total_cross_channel_spend);
+    const mean = fans.length ? fans.reduce((s, f) => s + f.total_cross_channel_spend, 0) / fans.length : 0;
+    const x = tierOrder[tier];
+    return {
+      label: `${tierMeta[tier].label} Avg`,
+      data: [{ x: x - 0.28, y: mean }, { x: x + 0.28, y: mean }],
+      type: 'line',
+      borderColor: tierMeta[tier].color.replace(/[\d.]+\)$/, '1)'),
+      borderWidth: 3,
+      pointRadius: 0,
+      tension: 0,
+      showLine: true,
+      tooltip: { filter: () => false },
+    };
+  });
   CHARTS['t4-vipScatter'] = new Chart(document.getElementById('t4-vipScatter'), {
     type: 'scatter',
-    data: {
-      datasets: [{
-        label: 'Linked Fans',
-        data: scatterData,
-        backgroundColor: 'rgba(46,97,143,0.55)',
-        pointRadius: 4,
-      }],
-    },
+    data: { datasets: [...tierDatasets, ...meanDatasets] },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: {
-          label: ctx => `Tier: ${['','Standard','Silver','Gold','Platinum'][ctx.raw.x]} | XCS: ${fmt.currency(ctx.raw.y)}`
-        }},
+        legend: {
+          position: 'bottom',
+          labels: { filter: item => !item.text.includes('Avg') },
+        },
+        tooltip: {
+          mode: 'nearest',
+          intersect: true,
+          filter: item => !item.dataset.label.includes('Avg'),
+          callbacks: {
+            title: ctx => {
+              const p = ctx[0]?.raw;
+              return p ? `${ctx[0].dataset.label}  •  ${p.state}  •  ${p.venue}` : '';
+            },
+            label: ctx => {
+              const p = ctx.raw;
+              return [
+                `Total XCS: ${fmt.currency(p.y)}`,
+                `ADW ${fmt.currency(p.adw)}   Tickets ${fmt.currency(p.tickets)}   F&B ${fmt.currency(p.fnb)}`,
+              ];
+            },
+          },
+        },
       },
       scales: {
         x: { min: 0.5, max: 4.5, ticks: { stepSize: 1,
@@ -627,10 +674,15 @@ function renderTab4() {
     .sort((a,b)=>b.total_cross_channel_spend-a.total_cross_channel_spend)
     .slice(0, Math.max(1, Math.floor(linkedFans.length*0.10)));
   const topN = topFans.slice(0, 10);
+  const TIER_ABBREV = { platinum: 'Plat', gold: 'Gold', silver: 'Silv', standard: 'Std' };
   CHARTS['t4-topDecile'] = new Chart(document.getElementById('t4-topDecile'), {
     type: 'bar',
     data: {
-      labels: topN.map((_, i) => `Fan #${i+1}`),
+      labels: topN.map(fan => {
+        const tier  = TIER_ABBREV[fan.adw_vip_tier] || '—';
+        const state = fan.adw_state || fan.home_state || '—';
+        return `${tier} • ${state}`;
+      }),
       datasets: [
         { label: 'ADW Handle',   data: topN.map(fan=>fan.adw_handle||0),   backgroundColor: PALETTE.navy,  stack: 's' },
         { label: 'Ticket Spend', data: topN.map(fan=>fan.ticket_spend||0), backgroundColor: PALETTE.blue,  stack: 's' },
