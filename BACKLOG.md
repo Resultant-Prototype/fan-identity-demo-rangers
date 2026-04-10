@@ -24,7 +24,23 @@
 
 ~~- **Purchase Timing: Daniel's pacing benchmarks as annotation lines**~~ ✓ Fixed — light red zone on `0–3 days` ("~13% day-of"), dashed benchmark lines at `4–7 days` ("Day 4 — 70% SG target") and `15–30 days` ("Day 17 — 78% budget"). ⓘ tooltip added to chart title with benchmark context.
 
+## Data Issues (low-variance / thin data — revisit before live demo)
+
+- **362 linked fans is a low count** — For a full MLB season (81 home games), 362 linked fans feels thin. Should be 2,000–5,000+ to feel credible in a front-office demo. Consider expanding FANS array or adjusting linkage rate commentary in the Tab 4 match banner.
+
+- **Arrival Distribution shows near-zero variance** — Monthly stacked bars look nearly identical across all months. Real arrival patterns shift meaningfully (summer heat → more late arrivals; Opening Day → extremely early). Inject seasonal variance into `arr_*` fields in `GAME_SCANS` data.
+
+- **LSM Scan Rate flatlines** — The line chart sits at ~97% all season with almost no movement. Real STM scan rates fluctuate 10–20 pts by month (cold April, summer road trips, September meaningless games). Inject realistic variance.
+
+- **Food subcategories (hot dogs, beer)** — The F&B tab only shows Food / Beer & Wine / Non-Alcoholic. Rangers front office will ask about specific items. Consider adding sub-category breakdown (hot dogs, nachos, domestic beer, premium beer) either as a separate chart or as tooltip drill-down on the category chart.
+
 ## Feature Ideas
+
+- **Ticket Pacing: bar-in-bar visualization** — Replace the current annotation-line approach (dashed lines at 70% and 78%) with a bar-in-bar chart where the outer bar represents the dynamic per-game target (based on days-out: 88% day-of, 70% at Day 4, 78% at Day 17) and the inner bar shows actual % sold. The gap or overhang between them is instantly readable without requiring the viewer to find a floating reference line. Implementation: render two datasets — a background bar at `target` opacity and a foreground bar at `pctSold`, both on the same y-axis. Replaces `floor70` and `target78` annotations in `t2-ticketPacing`.
+
+- **Membership Tier scatter: richer hover tooltip** — Current tooltip shows only `$X,XXX` (total cross-channel spend). Should surface: fan's spend breakdown (Tickets / F&B), their tier label, and seat section. Requires attaching extra properties to each scatter data point (`{x, y, ticketSpend, fnbSpend, section, tier}`) so `ctx.raw` in the tooltip callback can access them. Example tooltip: "Lone Star Member · Lexus Club / Ticket: $3,200 / F&B: $890 / Total: $4,090". Affects `scatterDatasets` construction and the tooltip callback in `t4-spendByTier`.
+
+
 
 - **Gate Access: stadium interior gate heatmap** — Add a new chart to Tab 1 showing a schematic of Globe Life Field's gate layout with each entrance colored by scan volume (fans scanned through that gate). Color scale: light → dark navy or light → Rangers red for high volume. Data source: extend `GAME_SCANS` to include a `gate` field or derive gate assignment from `section` ranges. Requires an SVG or canvas-drawn stadium outline.
 

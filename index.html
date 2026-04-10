@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fan Identity Resolution Demo — Texas Rangers Baseball Club</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Lexend+Deca:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-venn@4.3.0/build/index.umd.min.js"></script>
@@ -23,7 +24,7 @@
       --gray-600:   #6B7280;
       --gray-900:   #111827;
       --accent-red: #D85F52;
-      --font:        'Inter', system-ui, sans-serif;
+      --font:        'Lexend Deca', system-ui, sans-serif;
       --radius:      6px;
       --shadow-sm:   0 1px 3px rgba(0,0,0,.08);
       --shadow-md:   0 4px 12px rgba(0,0,0,.10);
@@ -41,7 +42,7 @@
       display: flex; align-items: center;
     }
     #logo-area img { max-width: 120px; }
-    #org-name { font-size: 16px; font-weight: 600; }
+    #org-name { font-size: 15px; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.07em; text-transform: uppercase; }
     #tab-bar {
       display: flex; gap: 0;
       background: var(--white);
@@ -92,7 +93,7 @@
       padding: 6px 16px; font-family: var(--font); font-size: 13px;
       font-weight: 600; color: var(--white); cursor: pointer;
     }
-    .btn-export:hover { background: #008a7a; }
+    .btn-export:hover { background: #9e0e19; }
     .ban-row {
       display: grid; grid-template-columns: repeat(6, 1fr);
       gap: 16px; margin-bottom: 24px;
@@ -155,13 +156,15 @@
     [data-tooltip] { position: relative; cursor: help; }
     [data-tooltip]::after {
       content: attr(data-tooltip);
-      position: absolute; bottom: calc(100% + 6px); left: 50%;
+      position: absolute; bottom: calc(100% + 8px); left: 50%;
       transform: translateX(-50%);
-      background: var(--gray-900); color: var(--white);
-      font-size: 11px; font-weight: 400; line-height: 1.4;
-      padding: 6px 10px; border-radius: 4px; white-space: pre-wrap;
-      width: 220px; z-index: 100; pointer-events: none; opacity: 0;
-      transition: opacity .15s;
+      background: rgba(10,20,50,0.97); color: rgba(255,255,255,0.92);
+      font-size: 11.5px; font-weight: 400; line-height: 1.55;
+      padding: 8px 12px; border-radius: 6px; white-space: pre-wrap;
+      width: 240px; z-index: 100; pointer-events: none; opacity: 0;
+      transition: opacity .2s;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.40);
+      border: 1px solid rgba(192,17,31,0.30);
     }
     [data-tooltip]:hover::after { opacity: 1; }
 
@@ -178,16 +181,18 @@
     }
     .map-tooltip {
       position: absolute;
-      background: rgba(27,42,74,0.95);
-      color: #fff;
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-size: 11px;
+      background: rgba(10,20,50,0.97);
+      color: rgba(255,255,255,0.92);
+      padding: 9px 13px;
+      border-radius: 6px;
+      font-size: 11.5px;
       line-height: 1.7;
       pointer-events: none;
       white-space: nowrap;
       z-index: 200;
       display: none;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.40);
+      border: 1px solid rgba(192,17,31,0.28);
     }
     .map-legend {
       display: flex;
@@ -1061,21 +1066,34 @@ function destroyChart(id) {
   if (CHARTS[id]) { CHARTS[id].destroy(); delete CHARTS[id]; }
 }
 
-Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.font.family = "'Lexend Deca', system-ui, sans-serif";
 Chart.defaults.font.size = 12;
 Chart.defaults.color = '#6B7280';
 
+// Global tooltip polish
+Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(10,20,50,0.96)';
+Chart.defaults.plugins.tooltip.padding = { x: 12, y: 10 };
+Chart.defaults.plugins.tooltip.borderColor = 'rgba(192,17,31,0.40)';
+Chart.defaults.plugins.tooltip.borderWidth = 1;
+Chart.defaults.plugins.tooltip.titleColor = '#fff';
+Chart.defaults.plugins.tooltip.bodyColor = 'rgba(255,255,255,0.82)';
+Chart.defaults.plugins.tooltip.footerColor = 'rgba(255,255,255,0.52)';
+Chart.defaults.plugins.tooltip.cornerRadius = 6;
+Chart.defaults.plugins.tooltip.caretSize = 5;
+Chart.defaults.plugins.tooltip.boxPadding = 4;
+
 const PALETTE = {
-  navy:    '#003278',
-  navyMid: '#1A4A8A',
-  navySoft:'#3D6BA8',
-  red:     '#C0111F',
-  redSoft: 'rgba(192,17,31,0.55)',
-  gray:    '#8B96A5',
-  grayDim: 'rgba(139,150,165,0.40)',
-  gray2:   '#C5CBD4',
-  coral:   '#D85F52',
-  teal2:   '#48CAB2',
+  navy:      '#003278',   // Rangers Navy — headers, primary series
+  navyMid:   '#1E5FA8',   // distinct mid-blue
+  navySoft:  '#4A87C8',   // clear lighter blue
+  navyPale:  '#8EB9E8',   // pale blue for sequential scales
+  navyGhost: '#C8DEF5',   // very pale for 5-step sequences
+  red:       '#C0111F',   // Rangers Red — hero accent
+  redSoft:   'rgba(192,17,31,0.55)',
+  gray:      '#8B96A5',   // muted gray — baseline / tertiary series
+  grayDim:   'rgba(139,150,165,0.40)',
+  gray2:     '#C5CBD4',
+  coral:     '#D85F52',
 };
 
 // ── State choropleth map (reused by Tab 1 and Tab 4) ──────────────
@@ -1105,7 +1123,7 @@ function renderStateMap(containerId, stateDataMap, tooltipFn) {
     document.querySelectorAll('.map-d3-tip').forEach(t => t.remove());
     const tip = document.createElement('div');
     tip.className = 'map-d3-tip';
-    tip.style.cssText = 'position:fixed;background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:6px;font-size:12px;pointer-events:none;display:none;z-index:9999;';
+    tip.style.cssText = 'position:fixed;background:rgba(10,20,50,0.97);color:rgba(255,255,255,0.92);padding:9px 13px;border-radius:6px;font-size:12px;line-height:1.6;pointer-events:none;display:none;z-index:9999;box-shadow:0 6px 20px rgba(0,0,0,0.40);border:1px solid rgba(192,17,31,0.28);';
     document.body.appendChild(tip);
 
     svg.selectAll('path')
@@ -1163,35 +1181,33 @@ function renderTab1() {
     { label: 'Lone Star Member Scan Rate', value: fmt.pct(stmScanRate), lead: true },
   ]);
 
+  // Full-season timeline for per-game time-series charts
+  const tlGames = mode === 'focused'
+    ? [...focused, ...(baseline || [])].sort((a, b) => a.date.localeCompare(b.date))
+    : [...focused].sort((a, b) => a.date.localeCompare(b.date));
+  const focusedSet = new Set(fIds);
+  const tlScans   = mode === 'focused' ? getScanRows(tlGames.map(g => g.id))   : fScans;
+  const tlTickets = mode === 'focused' ? getTicketRows(tlGames.map(g => g.id)) : fTickets;
+
   // ── Chart 1: Attendance vs. Tickets Sold by Game ──
   destroyChart('t1-attendanceByGame');
-  const sortedGames = [...focused].sort((a, b) => a.date.localeCompare(b.date));
-  const labels1 = sortedGames.map(g => g.date.slice(5));
-
-  const soldData   = sortedGames.map(g => { const t = fTickets.find(r => r.game_id === g.id); return t ? t.tickets_sold_total : 0; });
-  const scanData   = sortedGames.map(g => { const s = fScans.find(r => r.game_id === g.id);   return s ? s.tickets_scanned : 0; });
-
-  const datasets1 = [];
-  if (mode === 'focused' && bScans.length) {
-    const bSortedGames = [...(baseline || [])].sort((a, b) => a.date.localeCompare(b.date));
-    const bSoldData = bSortedGames.map(g => { const t = getTicketRows([g.id])[0]; return t ? t.tickets_sold_total : 0; });
-    const bScanData = bSortedGames.map(g => { const s = getScanRows([g.id])[0];   return s ? s.tickets_scanned : 0; });
-    datasets1.push(
-      { label: 'Sold (other games)',    data: bSoldData,  backgroundColor: PALETTE.grayDim, type: 'bar', xAxisID: 'xBase', hidden: true },
-    );
-  }
-  datasets1.push(
-    { label: mode === 'focused' ? `Sold (${STATE.opponent})` : 'Tickets Sold',
-      data: soldData, backgroundColor: mode === 'focused' ? PALETTE.redSoft : PALETTE.navySoft,
-      type: 'bar', borderRadius: 2 },
-    { label: mode === 'focused' ? `Attended (${STATE.opponent})` : 'Tickets Scanned',
-      data: scanData, borderColor: PALETTE.navy, backgroundColor: 'rgba(0,50,120,0.06)',
-      type: 'line', pointRadius: 0, borderWidth: 2, tension: 0.2, fill: false },
+  const labels1    = tlGames.map(g => g.date.slice(5));
+  const soldData   = tlGames.map(g => { const t = tlTickets.find(r => r.game_id === g.id); return t ? t.tickets_sold_total : 0; });
+  const scanData   = tlGames.map(g => { const s = tlScans.find(r => r.game_id === g.id);   return s ? s.tickets_scanned : 0; });
+  const barColors1 = tlGames.map(g =>
+    mode === 'all'         ? PALETTE.navySoft :
+    focusedSet.has(g.id)   ? PALETTE.redSoft  : PALETTE.grayDim
   );
 
   CHARTS['t1-attendanceByGame'] = new Chart(document.getElementById('t1-attendanceByGame'), {
     type: 'bar',
-    data: { labels: labels1, datasets: datasets1 },
+    data: { labels: labels1, datasets: [
+      { label: mode === 'focused' ? `Sold (${STATE.opponent} highlighted)` : 'Tickets Sold',
+        data: soldData, backgroundColor: barColors1, type: 'bar', borderRadius: 2 },
+      { label: 'Tickets Scanned',
+        data: scanData, borderColor: PALETTE.navy, backgroundColor: 'rgba(0,50,120,0.06)',
+        type: 'line', pointRadius: 0, borderWidth: 2, tension: 0.2, fill: false },
+    ]},
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
@@ -1199,12 +1215,12 @@ function renderTab1() {
         tooltip: {
           callbacks: {
             title: items => {
-              const g = sortedGames[items[0]?.dataIndex];
+              const g = tlGames[items[0]?.dataIndex];
               return g ? `${g.date} vs. ${g.opponent}` : '';
             },
             afterBody: items => {
               const i = items[0]?.dataIndex;
-              const s = fScans[i];
+              const s = tlScans.find(r => r.game_id === tlGames[i]?.id);
               return s ? [`No-show: ${fmt.num(s.no_show_count)}`] : [];
             },
           },
@@ -1220,15 +1236,23 @@ function renderTab1() {
   // ── Chart 2: No-Show Rate by Game ──
   destroyChart('t1-noshowByGame');
   const seasonAvgNoShow = fScans.length ? fScans.reduce((s, r) => s + r.no_show_rate, 0) / fScans.length : 0;
-  const noShowColors = fScans.map(r => r.no_show_rate > seasonAvgNoShow ? PALETTE.coral : PALETTE.navySoft);
+  const noShowColors = tlGames.map(g => {
+    const s = tlScans.find(r => r.game_id === g.id);
+    if (!s) return 'rgba(0,0,0,0)';
+    const above = s.no_show_rate > seasonAvgNoShow;
+    if (mode === 'focused' && !focusedSet.has(g.id)) {
+      return above ? 'rgba(192,17,31,0.28)' : 'rgba(139,150,165,0.25)';
+    }
+    return above ? PALETTE.red : PALETTE.gray;
+  });
 
   CHARTS['t1-noshowByGame'] = new Chart(document.getElementById('t1-noshowByGame'), {
     type: 'bar',
     data: {
-      labels: sortedGames.map(g => g.date.slice(5)),
+      labels: tlGames.map(g => g.date.slice(5)),
       datasets: [{
         label: 'No-Show Rate',
-        data: sortedGames.map(g => { const s = fScans.find(r => r.game_id === g.id); return s ? s.no_show_rate : 0; }),
+        data: tlGames.map(g => { const s = tlScans.find(r => r.game_id === g.id); return s ? s.no_show_rate : 0; }),
         backgroundColor: noShowColors,
         borderRadius: 2,
       }],
@@ -1241,15 +1265,22 @@ function renderTab1() {
           annotations: {
             avgLine: {
               type: 'line', yMin: seasonAvgNoShow, yMax: seasonAvgNoShow,
-              borderColor: PALETTE.navy, borderWidth: 1, borderDash: [4, 4],
-              label: { content: `Season avg ${fmt.pct(seasonAvgNoShow)}`, display: true, position: 'end', font: { size: 10 } },
+              borderColor: PALETTE.navy, borderWidth: 1.5, borderDash: [4, 4],
+              label: {
+                content: `Season avg ${fmt.pct(seasonAvgNoShow)}`,
+                display: true, position: 'end',
+                font: { size: 10, weight: '600', family: "'Lexend Deca'" },
+                color: PALETTE.navy,
+                backgroundColor: 'rgba(255,255,255,0.88)',
+                padding: { x: 6, y: 3 }, borderRadius: 3,
+              },
             },
           },
         },
         tooltip: {
           callbacks: {
             title: items => {
-              const g = sortedGames[items[0]?.dataIndex];
+              const g = tlGames[items[0]?.dataIndex];
               return g ? `${g.date} vs. ${g.opponent}` : '';
             },
             label: ctx => `No-show: ${fmt.pct(ctx.raw)}`,
@@ -1267,7 +1298,7 @@ function renderTab1() {
   destroyChart('t1-arrivalDist');
   const arrBuckets = ['arr_90plus', 'arr_60to90', 'arr_30to60', 'arr_0to30', 'arr_post_pitch'];
   const arrLabels  = ['90+ min early', '60–90 min', '30–60 min', '0–30 min', 'After first pitch'];
-  const arrColors  = [PALETTE.navy, PALETTE.navyMid, PALETTE.navySoft, PALETTE.gray, PALETTE.gray2];
+  const arrColors  = [PALETTE.navy, PALETTE.navyMid, PALETTE.navySoft, PALETTE.navyPale, PALETTE.navyGhost];
   const arrDatasets3 = [];
 
   if (mode === 'all') {
@@ -1337,7 +1368,7 @@ function renderTab1() {
       datasets: [{
         label: 'No-Show Rate',
         data: [stmNS, singleNS, secNS],
-        backgroundColor: [PALETTE.navy, PALETTE.navyMid, PALETTE.navySoft],
+        backgroundColor: [PALETTE.navy, PALETTE.navySoft, PALETTE.gray],
         borderRadius: 4,
       }],
     },
@@ -1455,34 +1486,42 @@ function renderTab2() {
     { label: 'Top State',                  value: topState, lead: true },
   ]);
 
-  const sortedGames2 = [...focused].sort((a, b) => a.date.localeCompare(b.date));
+  // Full-season timeline for Tab 2 time-series charts
+  const tlGames2    = mode === 'focused'
+    ? [...focused, ...(baseline || [])].sort((a, b) => a.date.localeCompare(b.date))
+    : [...focused].sort((a, b) => a.date.localeCompare(b.date));
+  const focusedSet2 = new Set(fIds);
+  const tlTickets2  = mode === 'focused' ? getTicketRows(tlGames2.map(g => g.id)) : fTickets;
+  const sortedGames2 = tlGames2;
 
   // ── Chart 1: Tickets Sold by Game (line) ──
   destroyChart('t2-soldByGame');
-  const soldByGame  = sortedGames2.map(g => { const t = fTickets.find(r => r.game_id === g.id); return t ? t.tickets_sold_total : 0; });
-  const datasets21  = [{ label: 'Tickets Sold', data: soldByGame, borderColor: PALETTE.navy,
-                          backgroundColor: 'rgba(0,50,120,0.07)', fill: true, pointRadius: 0, borderWidth: 2, tension: 0.2 }];
+  const soldByGame    = tlGames2.map(g => { const t = tlTickets2.find(r => r.game_id === g.id); return t ? t.tickets_sold_total : 0; });
+  const ptColors2     = tlGames2.map(g => mode === 'focused' && focusedSet2.has(g.id) ? PALETTE.red : 'transparent');
+  const ptRadii2      = tlGames2.map(g => mode === 'focused' && focusedSet2.has(g.id) ? 5 : 0);
+  const datasets21    = [{ label: 'Tickets Sold', data: soldByGame, borderColor: PALETTE.navy,
+                            backgroundColor: 'rgba(0,50,120,0.07)', fill: true,
+                            pointBackgroundColor: ptColors2, pointBorderColor: ptColors2,
+                            pointRadius: ptRadii2, borderWidth: 2, tension: 0.2 }];
   if (mode === 'focused' && STATE.showSeasonAvg) {
-    const bIds2 = (baseline || []).map(g => g.id);
-    const bTickets = getTicketRows(bIds2);
-    const bAvg = bTickets.length ? bTickets.reduce((s, r) => s + r.tickets_sold_total, 0) / bTickets.length : 0;
-    datasets21.push({ label: 'Season Avg', data: sortedGames2.map(() => bAvg),
+    const bAvg = fTickets.length ? fTickets.reduce((s, r) => s + r.tickets_sold_total, 0) / fTickets.length : 0;
+    datasets21.push({ label: 'Season Avg', data: tlGames2.map(() => bAvg),
                       borderColor: PALETTE.grayDim, borderDash: [4, 4], pointRadius: 0, borderWidth: 1, fill: false });
   }
 
   CHARTS['t2-soldByGame'] = new Chart(document.getElementById('t2-soldByGame'), {
     type: 'line',
-    data: { labels: sortedGames2.map(g => g.date.slice(5)), datasets: datasets21 },
+    data: { labels: tlGames2.map(g => g.date.slice(5)), datasets: datasets21 },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { position: 'bottom' },
         tooltip: {
           callbacks: {
-            title: items => { const g = sortedGames2[items[0]?.dataIndex]; return g ? `${g.date} vs. ${g.opponent}` : ''; },
+            title: items => { const g = tlGames2[items[0]?.dataIndex]; return g ? `${g.date} vs. ${g.opponent}` : ''; },
             afterBody: items => {
               const i = items[0]?.dataIndex;
-              const t = fTickets.find(r => r.game_id === sortedGames2[i]?.id);
+              const t = tlTickets2.find(r => r.game_id === tlGames2[i]?.id);
               return t ? [`STM: ${fmt.num(t.stm_tickets)}  Single: ${fmt.num(t.single_tickets)}  Secondary: ${fmt.num(t.secondary_tickets)}`] : [];
             },
           },
@@ -1502,9 +1541,9 @@ function renderTab2() {
     data: {
       labels: sortedGames2.map(g => g.date.slice(5)),
       datasets: [
-        { label: 'Lone Star Member', data: sortedGames2.map(g => { const t = fTickets.find(r => r.game_id === g.id); return t ? t.stm_revenue : 0; }), backgroundColor: PALETTE.navy, borderRadius: 2 },
-        { label: 'Single Game',      data: sortedGames2.map(g => { const t = fTickets.find(r => r.game_id === g.id); return t ? t.single_revenue : 0; }), backgroundColor: PALETTE.navyMid },
-        { label: 'Secondary Market', data: sortedGames2.map(g => { const t = fTickets.find(r => r.game_id === g.id); return t ? t.secondary_revenue : 0; }), backgroundColor: PALETTE.navySoft },
+        { label: 'Lone Star Member', data: sortedGames2.map(g => { const t = tlTickets2.find(r => r.game_id === g.id); return t ? t.stm_revenue : 0; }), backgroundColor: PALETTE.navy, borderRadius: 2 },
+        { label: 'Single Game',      data: sortedGames2.map(g => { const t = tlTickets2.find(r => r.game_id === g.id); return t ? t.single_revenue : 0; }), backgroundColor: PALETTE.navySoft },
+        { label: 'Secondary Market', data: sortedGames2.map(g => { const t = tlTickets2.find(r => r.game_id === g.id); return t ? t.secondary_revenue : 0; }), backgroundColor: PALETTE.gray },
       ],
     },
     options: {
@@ -1602,9 +1641,9 @@ function renderTab2() {
     data: {
       labels: timingBuckets,
       datasets: [
-        { label: 'Lone Star Member', data: timingDist('lone_star'),   backgroundColor: PALETTE.navy,     borderRadius: 3 },
-        { label: 'Single Game',      data: timingDist('single_game'), backgroundColor: PALETTE.navyMid,  borderRadius: 3 },
-        { label: 'Secondary Market', data: timingDist('secondary'),   backgroundColor: PALETTE.navySoft, borderRadius: 3 },
+        { label: 'Lone Star Member', data: timingDist('lone_star'),   backgroundColor: PALETTE.navy,    borderRadius: 3 },
+        { label: 'Single Game',      data: timingDist('single_game'), backgroundColor: PALETTE.navySoft, borderRadius: 3 },
+        { label: 'Secondary Market', data: timingDist('secondary'),   backgroundColor: PALETTE.gray,    borderRadius: 3 },
       ],
     },
     options: {
@@ -1640,7 +1679,7 @@ function renderTab2() {
     return {
       label:    `${d.opponent.split(' ').pop()} · ${d.date.slice(5).replace('-','/')} · ${d.daysUntil}d`,
       pctSold:  d.pctSold, target, gap,
-      color:    gap >= 0 ? '#2D9B5A' : gap >= -10 ? '#E8A020' : '#C0111F',
+      color:    gap >= 0 ? '#4A7FC1' : gap >= -10 ? '#8B96A5' : '#C0111F',
       opponent: d.opponent, date: d.date, daysUntil: d.daysUntil,
     };
   });
@@ -1656,11 +1695,11 @@ function renderTab2() {
         const barW = bar.x - x0;
         ctx.save();
         if (barW > 36) {
-          ctx.fillStyle = '#fff'; ctx.font = '600 10px Inter,system-ui,sans-serif';
+          ctx.fillStyle = '#fff'; ctx.font = '600 10px "Lexend Deca",system-ui,sans-serif';
           ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
           ctx.fillText(`${val}%`, bar.x - 5, bar.y);
         } else {
-          ctx.fillStyle = '#374151'; ctx.font = '10px Inter,system-ui,sans-serif';
+          ctx.fillStyle = '#374151'; ctx.font = '10px "Lexend Deca",system-ui,sans-serif';
           ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
           ctx.fillText(`${val}%`, bar.x + 4, bar.y);
         }
@@ -1699,16 +1738,16 @@ function renderTab2() {
           annotations: {
             floor70: {
               type: 'line', scaleID: 'x', value: 70,
-              borderColor: '#E8A020', borderWidth: 1.5, borderDash: [4, 3],
+              borderColor: '#8B96A5', borderWidth: 1.5, borderDash: [4, 3],
               label: { display: true, content: 'Day 4 floor (70%)', position: 'end',
-                       font: { size: 9 }, color: '#E8A020',
+                       font: { size: 9 }, color: '#8B96A5',
                        backgroundColor: 'rgba(255,255,255,0.85)', padding: { x: 3, y: 2 } },
             },
             target78: {
               type: 'line', scaleID: 'x', value: 78,
-              borderColor: '#2D9B5A', borderWidth: 1.5, borderDash: [4, 3],
+              borderColor: '#4A7FC1', borderWidth: 1.5, borderDash: [4, 3],
               label: { display: true, content: 'Day 17 target (78%)', position: 'end',
-                       font: { size: 9 }, color: '#2D9B5A',
+                       font: { size: 9 }, color: '#4A7FC1',
                        backgroundColor: 'rgba(255,255,255,0.85)', padding: { x: 3, y: 2 } },
             },
           },
@@ -1779,29 +1818,41 @@ function renderTab3() {
     { label: 'Avg Transaction',     value: '$' + avgTxVal.toFixed(2) },
   ]);
 
-  const sortedGames3 = [...focused].sort((a, b) => a.date.localeCompare(b.date));
+  // Full-season timeline for Tab 3 time-series charts
+  const tlGames3   = mode === 'focused'
+    ? [...focused, ...(baseline || [])].sort((a, b) => a.date.localeCompare(b.date))
+    : [...focused].sort((a, b) => a.date.localeCompare(b.date));
+  const focusedSet3 = new Set(fIds);
+  const tlFnb3     = mode === 'focused' ? getFnbRows(tlGames3.map(g => g.id)) : fFnb;
+  const sortedGames3 = tlGames3;
 
   // ── Chart 1: F&B Revenue by Game (line) ──
   destroyChart('t3-revByGame');
-  const revByGame = sortedGames3.map(g => { const r = fFnb.find(x => x.game_id === g.id); return r ? r[catRevField] : 0; });
-  const revLabel  = f.fnbCategory !== 'all' ? catLabels[f.fnbCategory] + ' Revenue' : 'F&B Revenue';
+  const revByGame  = tlGames3.map(g => { const r = tlFnb3.find(x => x.game_id === g.id); return r ? r[catRevField] : 0; });
+  const revLabel   = f.fnbCategory !== 'all' ? catLabels[f.fnbCategory] + ' Revenue' : 'F&B Revenue';
+  const ptColors3  = tlGames3.map(g => mode === 'focused' && focusedSet3.has(g.id) ? PALETTE.red : 'transparent');
+  const ptRadii3   = tlGames3.map(g => mode === 'focused' && focusedSet3.has(g.id) ? 5 : 0);
   const datasets31 = [{ label: revLabel, data: revByGame, borderColor: PALETTE.navy,
-                         backgroundColor: 'rgba(0,50,120,0.07)', fill: true, pointRadius: 0, borderWidth: 2, tension: 0.2 }];
+                         backgroundColor: 'rgba(0,50,120,0.07)', fill: true,
+                         pointBackgroundColor: ptColors3, pointBorderColor: ptColors3,
+                         pointRadius: ptRadii3, borderWidth: 2, tension: 0.2 }];
   if (mode === 'focused' && STATE.showSeasonAvg) {
-    const bFnb = getFnbRows((baseline || []).map(g => g.id));
-    const bAvg = bFnb.length ? bFnb.reduce((s, r) => s + r[catRevField], 0) / bFnb.length : 0;
-    datasets31.push({ label: 'Season Avg', data: sortedGames3.map(() => bAvg),
+    const bAvg = fFnb.length ? fFnb.reduce((s, r) => s + r[catRevField], 0) / fFnb.length : 0;
+    datasets31.push({ label: 'Season Avg', data: tlGames3.map(() => bAvg),
                       borderColor: PALETTE.grayDim, borderDash: [4, 4], pointRadius: 0, borderWidth: 1, fill: false });
   }
 
   CHARTS['t3-revByGame'] = new Chart(document.getElementById('t3-revByGame'), {
     type: 'line',
-    data: { labels: sortedGames3.map(g => g.date.slice(5)), datasets: datasets31 },
+    data: { labels: tlGames3.map(g => g.date.slice(5)), datasets: datasets31 },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { position: 'bottom' },
-        tooltip: { callbacks: { title: items => { const g = sortedGames3[items[0]?.dataIndex]; return g ? `${g.date} vs. ${g.opponent}` : ''; }, label: ctx => fmt.currency(ctx.raw) } },
+        tooltip: { callbacks: {
+          title: items => { const g = tlGames3[items[0]?.dataIndex]; return g ? `${g.date} vs. ${g.opponent}` : ''; },
+          label: ctx => fmt.currency(ctx.raw),
+        }},
       },
       scales: { x: { ticks: { maxTicksLimit: 12 }, grid: { display: false } }, y: { ticks: { callback: v => fmt.currency(v) } } },
     },
@@ -1837,7 +1888,7 @@ function renderTab3() {
   destroyChart('t3-revByCatMonth');
   const months3  = [...new Set(GAMES.map(g => g.month))].sort((a, b) => a - b);
   const monthNames3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const catColors3 = { food: PALETTE.navy, beer_wine: PALETTE.navyMid, non_alc: PALETTE.navySoft };
+  const catColors3 = { food: PALETTE.navy, beer_wine: PALETTE.navySoft, non_alc: PALETTE.gray };
   const catDatasets3 = ['food', 'beer_wine', 'non_alc'].map(cat => ({
     label: catLabels[cat],
     data: months3.map(m => {
@@ -1891,7 +1942,6 @@ function renderTab3() {
 
   // ── Chart 5: Per-Cap Spend by Seating Area (bar, Globe Life Field sections) ──
   destroyChart('t3-perCapBySection');
-  // Per-cap by section synthesized from FANS fnb_spend / fnb_visit_count by seat_section
   const sectionMap = {};
   FANS.filter(f2 => f2.fnb_fan_id && f2.seat_section).forEach(f2 => {
     if (!sectionMap[f2.seat_section]) sectionMap[f2.seat_section] = { total: 0, count: 0 };
@@ -1900,22 +1950,54 @@ function renderTab3() {
     sectionMap[f2.seat_section].count++;
   });
   const sectionOrder = ['Balcones Speakeasy', 'Lexus Club', 'Field Level', 'Main Level', 'Upper Level', 'Outfield'];
-  const sectionPercap = sectionOrder.map(sec => {
-    const d = sectionMap[sec];
-    return d && d.count > 0 ? d.total / d.count : 0;
+  // Sort descending by value
+  const sectionData = sectionOrder
+    .map(sec => { const d = sectionMap[sec]; return { sec, val: d && d.count > 0 ? d.total / d.count : 0 }; })
+    .sort((a, b) => b.val - a.val);
+  const sectionColors = sectionData.map(d => {
+    if (d.sec === 'Balcones Speakeasy') return PALETTE.red;
+    if (d.sec === 'Lexus Club')         return PALETTE.navy;
+    return PALETTE.navySoft;
   });
+  const sectionMaxVal = Math.max(...sectionData.map(d => d.val));
+
+  const sectionLabelPlugin = {
+    id: 't3SectionLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      const meta = chart.getDatasetMeta(0);
+      meta.data.forEach((bar, i) => {
+        const val = chart.data.datasets[0].data[i];
+        if (!val) return;
+        ctx.save();
+        ctx.font = '600 11px "Lexend Deca",system-ui,sans-serif';
+        ctx.fillStyle = '#374151';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('$' + val.toFixed(0), bar.x, bar.y - 4);
+        ctx.restore();
+      });
+    },
+  };
 
   CHARTS['t3-perCapBySection'] = new Chart(document.getElementById('t3-perCapBySection'), {
     type: 'bar',
+    plugins: [sectionLabelPlugin],
     data: {
-      labels: sectionOrder,
-      datasets: [{ label: 'Avg Per-Cap / Visit', data: sectionPercap,
-                   backgroundColor: PALETTE.navy, borderRadius: 4 }],
+      labels: sectionData.map(d => d.sec),
+      datasets: [{ label: 'Avg Per-Cap / Visit', data: sectionData.map(d => d.val),
+                   backgroundColor: sectionColors, borderRadius: 4 }],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '$' + ctx.raw.toFixed(2) } } },
-      scales: { x: { grid: { display: false }, ticks: { maxRotation: 25 } }, y: { ticks: { callback: v => '$' + v.toFixed(0) } } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => '$' + ctx.raw.toFixed(2) + ' per visit' } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxRotation: 20 } },
+        y: { ticks: { callback: v => '$' + v.toFixed(0) }, max: sectionMaxVal * 1.18 },
+      },
     },
   });
 }
@@ -1978,9 +2060,9 @@ function renderTab4() {
           { sets: ['Ticketmaster', 'Gate Scans', 'F&B'], value: seg.tsf },
         ],
         backgroundColor: [
-          'rgba(0,50,120,0.25)', 'rgba(26,74,138,0.25)', 'rgba(61,107,168,0.25)',
-          'rgba(0,50,120,0.35)', 'rgba(0,50,120,0.35)', 'rgba(72,202,178,0.50)',
-          'rgba(0,50,120,0.55)',
+          'rgba(0,50,120,0.22)', 'rgba(0,50,120,0.22)', 'rgba(192,17,31,0.20)',
+          'rgba(0,50,120,0.40)', 'rgba(100,20,35,0.35)', 'rgba(192,17,31,0.52)',
+          'rgba(0,30,90,0.62)',
         ],
       }],
     },
@@ -2005,7 +2087,7 @@ function renderTab4() {
   // ── Chart 2: Membership Tier vs. Cross-Channel Spend (scatter with jitter) ──
   destroyChart('t4-spendByTier');
   const tierMap  = { lone_star: 0, single_game: 1, secondary: 2 };
-  const tierCols = [PALETTE.navy, PALETTE.navyMid, PALETTE.navySoft];
+  const tierCols = [PALETTE.navy, PALETTE.navySoft, PALETTE.gray];
   const tierDisplayLabels = ['Lone Star Member', 'Single Game', 'Secondary Market'];
 
   const scatterDatasets = ['lone_star', 'single_game', 'secondary'].map((tier, ti) => {
@@ -2032,17 +2114,38 @@ function renderTab4() {
     label: 'Tier Mean',
     data: meanDataset,
     backgroundColor: PALETTE.red,
-    pointRadius: 7, pointStyle: 'crossRot', borderColor: PALETTE.red, borderWidth: 2,
+    pointRadius: 8, pointStyle: 'triangle', borderColor: PALETTE.red, borderWidth: 2,
   });
+
+  const meanLabelPlugin = {
+    id: 't4MeanLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      const dsIdx = chart.data.datasets.length - 1;
+      const meta  = chart.getDatasetMeta(dsIdx);
+      meta.data.forEach((point, i) => {
+        const val = chart.data.datasets[dsIdx].data[i]?.y;
+        if (val == null) return;
+        ctx.save();
+        ctx.font = '700 10px "Lexend Deca",system-ui,sans-serif';
+        ctx.fillStyle = PALETTE.red;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('avg ' + fmt.currency(Math.round(val)), point.x + 12, point.y - 2);
+        ctx.restore();
+      });
+    },
+  };
 
   CHARTS['t4-spendByTier'] = new Chart(document.getElementById('t4-spendByTier'), {
     type: 'scatter',
+    plugins: [meanLabelPlugin],
     data: { datasets: scatterDatasets },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { position: 'bottom' },
-        tooltip: { callbacks: { label: ctx => `$${fmt.currency(ctx.raw.y)}` } },
+        tooltip: { callbacks: { label: ctx => fmt.currency(ctx.raw.y) } },
       },
       scales: {
         x: {
@@ -2072,8 +2175,8 @@ function renderTab4() {
     data: {
       labels: decileLabels,
       datasets: [
-        { label: 'Ticket Spend',  data: top10.map(x => x.ticket_spend || 0), backgroundColor: PALETTE.navy, borderRadius: 3 },
-        { label: 'F&B Spend',     data: top10.map(x => x.fnb_spend || 0),    backgroundColor: PALETTE.navyMid },
+        { label: 'Ticket Spend',  data: top10.map(x => x.ticket_spend || 0), backgroundColor: PALETTE.navy,    borderRadius: 3 },
+        { label: 'F&B Spend',     data: top10.map(x => x.fnb_spend || 0),    backgroundColor: PALETTE.navySoft },
       ],
     },
     options: {
