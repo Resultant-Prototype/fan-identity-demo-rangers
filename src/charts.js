@@ -2,7 +2,6 @@
 // CHART REGISTRY
 // ═══════════════════════════════════════════════
 const CHARTS = {};
-
 function destroyChart(id) {
   if (CHARTS[id]) { CHARTS[id].destroy(); delete CHARTS[id]; }
 }
@@ -12,1052 +11,358 @@ Chart.defaults.font.size = 12;
 Chart.defaults.color = '#6B7280';
 
 const PALETTE = {
-  navy:   '#1B2A4A',   // very dark navy — dominant fills, strong anchor
-  blue:   '#2E618F',   // corporate mid-blue — default bar series (most charts)
-  slate:  '#5B7FA6',   // blue-gray — secondary/3rd categorical series
-  teal:   '#00A896',   // brand accent — HERO metric only (one teal per chart)
-  teal2:  '#48CAB2',   // lighter teal — Venn overlaps only
-  coral:  '#D85F52',   // negative / outflow
-  gray:   '#8B96A5',   // muted blue-gray — benchmarks, subordinate series
-  gray2:  '#C5CBD4',   // light gray — second benchmark, structural
+  navy:    '#003278',
+  navyMid: '#1A4A8A',
+  navySoft:'#3D6BA8',
+  red:     '#C0111F',
+  redSoft: 'rgba(192,17,31,0.55)',
+  gray:    '#8B96A5',
+  grayDim: 'rgba(139,150,165,0.40)',
+  gray2:   '#C5CBD4',
+  coral:   '#D85F52',
+  teal2:   '#48CAB2',
 };
 
-// ═══════════════════════════════════════════════
-// TAB 1: ADW WAGERING
-// ═══════════════════════════════════════════════
+// ── State choropleth map (reused by Tab 1 and Tab 4) ──────────────
+function renderStateMap(containerId, stateDataMap, tooltipFn) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '';
+  const W = el.clientWidth || 600, H = el.clientHeight || 260;
+  const svg = d3.select(el).append('svg').attr('width', W).attr('height', H);
+  const projection = d3.geoAlbersUsa().fitSize([W, H], { type: 'Sphere' });
+  const path = d3.geoPath().projection(projection);
 
+  const maxVal = Math.max(1, ...Object.values(stateDataMap).map(d => d.count || 0));
+  const colorScale = d3.scaleSequential([0, maxVal], t => `rgba(0,50,120,${0.06 + t * 0.85})`);
+
+  d3.json('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json').then(us => {
+    const features = topojson.feature(us, us.objects.states).features;
+    const stateNames = {
+      '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT','10':'DE',
+      '12':'FL','13':'GA','15':'HI','16':'ID','17':'IL','18':'IN','19':'IA','20':'KS',
+      '21':'KY','22':'LA','23':'ME','24':'MD','25':'MA','26':'MI','27':'MN','28':'MS',
+      '29':'MO','30':'MT','31':'NE','32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY',
+      '37':'NC','38':'ND','39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC',
+      '46':'SD','47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV',
+      '55':'WI','56':'WY',
+    };
+    const tip = document.createElement('div');
+    tip.style.cssText = 'position:fixed;background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:6px;font-size:12px;pointer-events:none;display:none;z-index:9999;';
+    document.body.appendChild(tip);
+
+    svg.selectAll('path')
+      .data(features)
+      .join('path')
+      .attr('d', path)
+      .attr('fill', d => {
+        const abbr = stateNames[String(d.id).padStart(2,'0')];
+        const data = stateDataMap[abbr];
+        return data ? colorScale(data.count || 0) : '#EEF0F3';
+      })
+      .attr('stroke', '#fff').attr('stroke-width', 0.5)
+      .on('mousemove', (evt, d) => {
+        const abbr = stateNames[String(d.id).padStart(2,'0')];
+        tip.innerHTML = tooltipFn(abbr, abbr, stateDataMap[abbr]);
+        tip.style.display = 'block';
+        tip.style.left = (evt.clientX + 12) + 'px';
+        tip.style.top  = (evt.clientY - 28) + 'px';
+      })
+      .on('mouseleave', () => { tip.style.display = 'none'; });
+  });
+}
+
+// ═══════════════════════════════════════════════
+// TAB 1: GATE ACCESS
+// ═══════════════════════════════════════════════
 function renderTab1() {
   const f = STATE.tab1;
-  const daily = filterDaily(DAILY_ADW, f);
-  const fans  = filterFans(f, 'tab1');
+  const { mode, focused, baseline } = filterGames(f);
 
-  const totalHandle = daily.reduce((s,r) => s + r.handle, 0);
-  const totalDeposits = daily.reduce((s,r) => s + r.deposits, 0);
-  const totalWithdrawals = daily.reduce((s,r) => s + r.withdrawals, 0);
-  const activeAccounts = daily.length > 0 ? Math.max(...daily.map(r => r.active_accounts)) : 0;
-  const newRegs = daily.reduce((s,r) => s + r.new_registrations, 0);
-  const mobileHandle = daily.reduce((s,r) => s + r.mobile_handle, 0);
-  const mobileShare = totalHandle > 0 ? mobileHandle / totalHandle : 0;
+  const fIds = focused.map(g => g.id);
+  const bIds = baseline ? baseline.map(g => g.id) : [];
+  const fScans   = getScanRows(fIds);
+  const fTickets = getTicketRows(fIds);
+  const bScans   = baseline ? getScanRows(bIds) : [];
 
-  const [wStart, wEnd] = getDateWindow(f);
-  const windowDays = Math.round((wEnd - wStart) / 86400000);
-  const priorEnd = new Date(wStart); priorEnd.setDate(priorEnd.getDate() - 1);
-  const priorStart = new Date(priorEnd); priorStart.setDate(priorEnd.getDate() - windowDays);
-  const priorFilters = { ...f, customStart: priorStart.toISOString().slice(0,10), customEnd: priorEnd.toISOString().slice(0,10), dateRange: 'custom' };
-  const priorDaily = filterDaily(DAILY_ADW, priorFilters);
-  const priorHandle = priorDaily.reduce((s,r) => s + r.handle, 0);
+  // ── BANs ──
+  const totalScanned   = fScans.reduce((s, r) => s + r.tickets_scanned, 0);
+  const totalSold      = fTickets.reduce((s, r) => s + r.tickets_sold_total, 0);
+  const avgAttendance  = fScans.length ? totalScanned / fScans.length : 0;
+  const noShowRate     = totalSold > 0 ? (totalSold - totalScanned) / totalSold : 0;
+  const earlyArrRate   = fScans.length
+    ? fScans.reduce((s, r) => s + r.arr_90plus + r.arr_60to90, 0) / fScans.length : 0;
+  const avgTixPerScan  = fScans.length
+    ? fScans.reduce((s, r) => s + r.avg_tickets_per_scan, 0) / fScans.length : 0;
+  const stmScanRate    = fScans.length
+    ? fScans.reduce((s, r) => s + (1 - r.stm_no_show_rate), 0) / fScans.length : 0;
 
   renderBANs('t1-bans', [
-    { label: 'Total Handle', value: fmt.currency(totalHandle), delta: fmt.delta(totalHandle, priorHandle) },
-    { label: 'Total Deposits', value: fmt.currency(totalDeposits) },
-    { label: 'Total Withdrawals', value: fmt.currency(totalWithdrawals) },
-    { label: 'Active Accounts', value: fmt.num(activeAccounts) },
-    { label: 'New Registrations', value: fmt.num(newRegs) },
-    { label: 'Mobile Share', value: fmt.pct(mobileShare) },
+    { label: 'Season Attendance',          value: fmt.num(totalScanned) },
+    { label: 'Avg Attendance / Game',      value: fmt.num(Math.round(avgAttendance)) },
+    { label: 'No-Show Rate',               value: fmt.pct(noShowRate) },
+    { label: 'Early Arrival Rate',         value: fmt.pct(earlyArrRate) },
+    { label: 'Avg Tickets Per Scan',       value: avgTixPerScan.toFixed(1) },
+    { label: 'Lone Star Member Scan Rate', value: fmt.pct(stmScanRate), lead: true },
   ]);
 
-  // Chart 1: Handle by Day (line)
-  destroyChart('t1-handleByDay');
-  const byDayLabels = [...new Set(daily.map(r => r.date))].sort();
-  const byDayData = byDayLabels.map(dt =>
-    daily.filter(r => r.date === dt).reduce((s,r) => s + r.handle, 0)
-  );
-  CHARTS['t1-handleByDay'] = new Chart(document.getElementById('t1-handleByDay'), {
-    type: 'line',
-    data: {
-      labels: byDayLabels,
-      datasets: [{ label: 'Handle', data: byDayData, borderColor: PALETTE.teal,
-                   backgroundColor: 'rgba(0,168,150,.08)', fill: true, pointRadius: 0,
-                   borderWidth: 2, tension: 0.3 }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { maxTicksLimit: 12,
-               callback: (value) => byDayLabels[value]?.slice(5) }, grid: { display: false } },
-        y: { ticks: { callback: v => fmt.currency(v) } },
-      },
-    },
-  });
+  // ── Chart 1: Attendance vs. Tickets Sold by Game ──
+  destroyChart('t1-attendanceByGame');
+  const sortedGames = [...focused].sort((a, b) => a.date.localeCompare(b.date));
+  const labels1 = sortedGames.map(g => g.date.slice(5));
 
-  // Chart 2: Marquee Day Handle vs. Benchmark Years (grouped bar)
-  destroyChart('t1-marqueeBar');
-  const marqueeRows = DAILY_ADW.filter(r => r.is_marquee);
-  const marqueeEvents = [...new Set(marqueeRows.map(r => r.event_id))];
-  const marqueeLabels = marqueeEvents.map(id => EVENTS.find(e => e.id === id)?.name || id);
-  const marquee2025 = marqueeEvents.map(id =>
-    marqueeRows.filter(r => r.event_id === id).reduce((s,r) => s + r.handle, 0)
+  const soldData   = sortedGames.map(g => { const t = fTickets.find(r => r.game_id === g.id); return t ? t.tickets_sold_total : 0; });
+  const scanData   = sortedGames.map(g => { const s = fScans.find(r => r.game_id === g.id);   return s ? s.tickets_scanned : 0; });
+
+  const datasets1 = [];
+  if (mode === 'focused' && bScans.length) {
+    const bSortedGames = [...(baseline || [])].sort((a, b) => a.date.localeCompare(b.date));
+    const bSoldData = bSortedGames.map(g => { const t = getTicketRows([g.id])[0]; return t ? t.tickets_sold_total : 0; });
+    const bScanData = bSortedGames.map(g => { const s = getScanRows([g.id])[0];   return s ? s.tickets_scanned : 0; });
+    datasets1.push(
+      { label: 'Sold (other games)',    data: bSoldData,  backgroundColor: PALETTE.grayDim, type: 'bar', xAxisID: 'xBase', hidden: true },
+    );
+  }
+  datasets1.push(
+    { label: mode === 'focused' ? `Sold (${STATE.opponent})` : 'Tickets Sold',
+      data: soldData, backgroundColor: mode === 'focused' ? PALETTE.redSoft : PALETTE.navySoft,
+      type: 'bar', borderRadius: 2 },
+    { label: mode === 'focused' ? `Attended (${STATE.opponent})` : 'Tickets Scanned',
+      data: scanData, borderColor: PALETTE.navy, backgroundColor: 'rgba(0,50,120,0.06)',
+      type: 'line', pointRadius: 0, borderWidth: 2, tension: 0.2, fill: false },
   );
-  const marquee_py1 = marquee2025.map((v,i) => Math.round(v * (1.18 - i*0.003)));
-  const marquee_py2 = marquee2025.map((v,i) => Math.round(v * (1.08 - i*0.002)));
-  CHARTS['t1-marqueeBar'] = new Chart(document.getElementById('t1-marqueeBar'), {
+
+  CHARTS['t1-attendanceByGame'] = new Chart(document.getElementById('t1-attendanceByGame'), {
     type: 'bar',
-    data: {
-      labels: marqueeLabels,
-      datasets: [
-        { label: 'Current Year', data: marquee2025, backgroundColor: PALETTE.teal },
-        { label: 'Peak Year 1',  data: marquee_py1, backgroundColor: PALETTE.gray },
-        { label: 'Peak Year 2',  data: marquee_py2, backgroundColor: PALETTE.gray2 },
-      ],
-    },
+    data: { labels: labels1, datasets: datasets1 },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { position: 'bottom' },
         tooltip: {
           callbacks: {
+            title: items => {
+              const g = sortedGames[items[0]?.dataIndex];
+              return g ? `${g.date} vs. ${g.opponent}` : '';
+            },
             afterBody: items => {
               const i = items[0]?.dataIndex;
-              const curr = marquee2025[i], py1 = marquee_py1[i], py2 = marquee_py2[i];
-              const d1 = py1 > 0 ? ((curr-py1)/py1*100).toFixed(1) : '—';
-              const d2 = py2 > 0 ? ((curr-py2)/py2*100).toFixed(1) : '—';
-              return [`vs. Peak Year 1: ${d1}%`, `vs. Peak Year 2: ${d2}%`];
+              const s = fScans[i];
+              return s ? [`No-show: ${fmt.num(s.no_show_count)}`] : [];
             },
           },
         },
       },
       scales: {
-        x: { ticks: { maxRotation: 30 } },
-        y: { ticks: { callback: v => fmt.currency(v) } },
+        x: { ticks: { maxTicksLimit: 12 }, grid: { display: false } },
+        y: { ticks: { callback: v => fmt.num(v) } },
       },
     },
   });
 
-  // Chart 3: Deposits vs. Withdrawals by Day (grouped bars + daily net on secondary axis)
-  destroyChart('t1-depWithDay');
-  const depData  = byDayLabels.map(dt => daily.filter(r=>r.date===dt).reduce((s,r)=>s+r.deposits,0));
-  const withData = byDayLabels.map(dt => daily.filter(r=>r.date===dt).reduce((s,r)=>s+r.withdrawals,0));
-  const netData  = depData.map((d, i) => d - withData[i]);
-  CHARTS['t1-depWithDay'] = new Chart(document.getElementById('t1-depWithDay'), {
+  // ── Chart 2: No-Show Rate by Game ──
+  destroyChart('t1-noshowByGame');
+  const seasonAvgNoShow = fScans.length ? fScans.reduce((s, r) => s + r.no_show_rate, 0) / fScans.length : 0;
+  const noShowColors = fScans.map(r => r.no_show_rate > seasonAvgNoShow ? PALETTE.coral : PALETTE.navySoft);
+
+  CHARTS['t1-noshowByGame'] = new Chart(document.getElementById('t1-noshowByGame'), {
     type: 'bar',
     data: {
-      labels: byDayLabels,
-      datasets: [
-        { type: 'bar',  label: 'Deposits',    data: depData,
-          backgroundColor: 'rgba(46,97,143,0.75)', yAxisID: 'y',
-          borderRadius: 2, borderSkipped: false },
-        { type: 'bar',  label: 'Withdrawals', data: withData,
-          backgroundColor: 'rgba(91,127,166,0.55)', yAxisID: 'y',
-          borderRadius: 2, borderSkipped: false },
-        { type: 'line', label: 'Daily Net',   data: netData,
-          borderColor: PALETTE.teal, backgroundColor: 'rgba(0,168,150,0.06)',
-          fill: true, yAxisID: 'y2',
-          pointRadius: 0, tension: 0.4, borderWidth: 2, borderDash: [5, 3] },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: {
-          callbacks: {
-            label: ctx => {
-              if (ctx.dataset.label === 'Daily Net') {
-                const sign = ctx.raw >= 0 ? '+' : '';
-                return `Daily Net: ${sign}${fmt.currency(ctx.raw)}`;
-              }
-              return `${ctx.dataset.label}: ${fmt.currency(ctx.raw)}`;
-            },
-          },
-        },
-      },
-      scales: {
-        x:  { ticks: { maxTicksLimit: 10,
-                callback: (value) => byDayLabels[value]?.slice(5) }, grid: { display: false } },
-        y:  { position: 'left',  ticks: { callback: v => fmt.currency(v) } },
-        y2: { position: 'right', ticks: { callback: v => fmt.currency(v) },
-              grid: { drawOnChartArea: false } },
-      },
-    },
-  });
-
-  // Chart 4: Mobile vs. Web Donut
-  destroyChart('t1-channelDonut');
-  const webHandle = daily.reduce((s,r) => s + r.web_handle, 0);
-  CHARTS['t1-channelDonut'] = new Chart(document.getElementById('t1-channelDonut'), {
-    type: 'doughnut',
-    data: {
-      labels: ['Mobile', 'Web'],
-      datasets: [{ data: [mobileHandle, webHandle],
-                   backgroundColor: [PALETTE.teal, PALETTE.navy], borderWidth: 0 }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: {
-          callbacks: {
-            label: ctx => {
-              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-              const pct = total > 0 ? (ctx.raw / total * 100).toFixed(1) : '0';
-              return `${ctx.label}: ${fmt.currency(ctx.raw)} (${pct}%)`;
-            },
-          },
-        },
-      },
-      cutout: '65%',
-    },
-  });
-
-  // Chart 5: Handle by State — Top 10 (horizontal bar)
-  destroyChart('t1-handleByState');
-  const stateHandleMap = {};
-  fans.forEach(fan => {
-    if (fan.adw_state && fan.adw_handle) {
-      stateHandleMap[fan.adw_state] = (stateHandleMap[fan.adw_state] || 0) + fan.adw_handle;
-    }
-  });
-  const sampleRatio = 100_000 / FANS.filter(fan => fan.adw_fan_id).length;
-  const stateHandleSorted = Object.entries(stateHandleMap)
-    .map(([state, val]) => [state, Math.round(val * sampleRatio)])
-    .sort((a,b) => b[1]-a[1]).slice(0,10);
-  CHARTS['t1-handleByState'] = new Chart(document.getElementById('t1-handleByState'), {
-    type: 'bar',
-    data: {
-      labels: stateHandleSorted.map(([s]) => s),
-      datasets: [{ label: 'Handle', data: stateHandleSorted.map(([,v]) => v),
-                   backgroundColor: PALETTE.blue, borderRadius: 4 }],
-    },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { ticks: { callback: v => fmt.currency(v) } }, y: { grid: { display: false } } },
-    },
-  });
-
-  // Map: ADW bettor distribution by state
-  const adwStateDataMap = {};
-  fans.forEach(fan => {
-    if (!fan.adw_state) return;
-    const s = fan.adw_state;
-    if (!adwStateDataMap[s]) adwStateDataMap[s] = { count: 0, handle: 0 };
-    adwStateDataMap[s].count++;
-    adwStateDataMap[s].handle += fan.adw_handle || 0;
-  });
-  const totalAdwFans = fans.length || 1;
-  renderStateMap('t1-map', adwStateDataMap, (abbr, name, d) => {
-    if (!d || !d.count) return `<strong>${name}</strong><br><span style="opacity:.7">No ADW bettors</span>`;
-    const pct = (d.count / totalAdwFans * 100).toFixed(1);
-    return [
-      `<strong>${name}</strong>`,
-      `${fmt.num(d.count)} bettors &nbsp;·&nbsp; ${pct}% of total`,
-      `Handle: ${fmt.currency(d.handle)}`,
-    ].join('<br>');
-  });
-}
-
-// ═══════════════════════════════════════════════
-// TAB 2: TICKET SALES
-// ═══════════════════════════════════════════════
-
-function renderTab2() {
-  const f = STATE.tab2;
-  let daily = filterDaily(DAILY_TICKETS, f);
-  if (f.eventType === 'marquee') daily = daily.filter(r => r.is_marquee);
-  if (f.eventType === 'regular') daily = daily.filter(r => !r.is_marquee);
-  const fans = filterFans(f, 'tab2');
-
-  const totalTickets = daily.reduce((s,r) => s + r.tickets_sold, 0);
-  const totalRev     = daily.reduce((s,r) => s + r.gross_revenue, 0);
-  const avgTktVal    = totalTickets > 0 ? totalRev / totalTickets : 0;
-  const uniquePurchasers = Math.round(fans.length * 1.4);
-  const repeatBuyers = fans.filter(fan => fan.repeat_buyer).length;
-  const repeatPct = fans.length > 0 ? repeatBuyers / fans.length : 0;
-  const stateMap = {};
-  fans.forEach(fan => { if (fan.ticket_state) stateMap[fan.ticket_state] = (stateMap[fan.ticket_state]||0)+1; });
-  const topState = Object.entries(stateMap).sort((a,b) => b[1]-a[1])[0]?.[0] || '—';
-
-  renderBANs('t2-bans', [
-    { label: 'Tickets Sold',      value: fmt.num(totalTickets) },
-    { label: 'Unique Purchasers', value: fmt.num(uniquePurchasers) },
-    { label: 'Gross Revenue',     value: fmt.currency(totalRev) },
-    { label: 'Avg. Ticket Value', value: '$' + avgTktVal.toFixed(0) },
-    { label: 'Repeat Buyers',     value: fmt.pct(repeatPct) },
-    { label: 'Top State',         value: topState },
-  ]);
-
-  // Chart: Ticket Purchases Over Time (line by month)
-  destroyChart('t2-tktOverTime');
-  const byMonth = {};
-  daily.forEach(r => {
-    const mo = r.date.slice(0,7);
-    byMonth[mo] = (byMonth[mo]||0) + r.tickets_sold;
-  });
-  const moLabels = Object.keys(byMonth).sort();
-  CHARTS['t2-tktOverTime'] = new Chart(document.getElementById('t2-tktOverTime'), {
-    type: 'line',
-    data: {
-      labels: moLabels,
-      datasets: [{ label: 'Tickets Sold', data: moLabels.map(m => byMonth[m]),
-                   borderColor: PALETTE.teal, backgroundColor: 'rgba(0,168,150,.08)',
-                   fill: true, pointRadius: 4, tension: 0.3, borderWidth: 2 }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => fmt.num(v) } } },
-    },
-  });
-
-  // Chart: Tickets Sold by Event (horizontal bar)
-  destroyChart('t2-soldByEvent');
-  const eventRows = DAILY_TICKETS.filter(r => r.is_marquee);
-  const eventMap = {};
-  eventRows.forEach(r => { eventMap[r.event_name] = (eventMap[r.event_name]||0) + r.tickets_sold; });
-  const evSorted = Object.entries(eventMap).sort((a,b) => b[1]-a[1]);
-  CHARTS['t2-soldByEvent'] = new Chart(document.getElementById('t2-soldByEvent'), {
-    type: 'bar',
-    data: {
-      labels: evSorted.map(([n])=>n),
-      datasets: [{ label: 'Tickets Sold', data: evSorted.map(([,v])=>v),
-                   backgroundColor: PALETTE.blue, borderRadius: 4 }],
-    },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { ticks: { callback: v => fmt.num(v) } }, y: { grid: { display: false } } },
-    },
-  });
-
-  // Chart: Revenue by Event and Seat Category (stacked bar)
-  destroyChart('t2-revByEventSeat');
-  const evPremMap = {}, evGenMap = {};
-  eventRows.forEach(r => {
-    evPremMap[r.event_name] = (evPremMap[r.event_name]||0) + r.premium_revenue;
-    evGenMap[r.event_name]  = (evGenMap[r.event_name]||0)  + r.general_revenue;
-  });
-  const evNames = evSorted.map(([n])=>n);
-  CHARTS['t2-revByEventSeat'] = new Chart(document.getElementById('t2-revByEventSeat'), {
-    type: 'bar',
-    data: {
-      labels: evNames,
-      datasets: [
-        { label: 'Premium',           data: evNames.map(n => evPremMap[n]||0), backgroundColor: PALETTE.navy },
-        { label: 'General Admission', data: evNames.map(n => evGenMap[n]||0),  backgroundColor: PALETTE.slate },
-      ],
-    },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: {
-          callbacks: {
-            afterBody: items => {
-              const total = items.reduce((s, item) => s + item.raw, 0);
-              return [`Total: ${fmt.currency(total)}`];
-            },
-          },
-        },
-      },
-      scales: { x: { stacked: true, ticks: { callback: v => fmt.currency(v) } },
-                y: { stacked: true, grid: { display: false } } },
-    },
-  });
-
-  // Chart: Historical Marquee Performance (grouped bar)
-  destroyChart('t2-historicalMarquee');
-  const curr = evNames.map(n => (evPremMap[n]||0) + (evGenMap[n]||0));
-  CHARTS['t2-historicalMarquee'] = new Chart(document.getElementById('t2-historicalMarquee'), {
-    type: 'bar',
-    data: {
-      labels: evNames,
-      datasets: [
-        { label: 'Current Year', data: curr, backgroundColor: PALETTE.teal },
-        { label: 'Peak Year 1',  data: curr.map((v,i) => Math.round(v*(1.16-i*0.004))), backgroundColor: PALETTE.gray },
-        { label: 'Peak Year 2',  data: curr.map((v,i) => Math.round(v*(1.07-i*0.003))), backgroundColor: PALETTE.gray2 },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
-      scales: { x: { ticks: { maxRotation: 30 } }, y: { ticks: { callback: v => fmt.currency(v) } } },
-    },
-  });
-
-  // Chart: Buyers by State — Top 10
-  destroyChart('t2-buyersByState');
-  const stateCount = {};
-  fans.forEach(fan => { if (fan.ticket_state) stateCount[fan.ticket_state] = (stateCount[fan.ticket_state]||0)+1; });
-  const stateSorted = Object.entries(stateCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  CHARTS['t2-buyersByState'] = new Chart(document.getElementById('t2-buyersByState'), {
-    type: 'bar',
-    data: {
-      labels: stateSorted.map(([s])=>s),
-      datasets: [{ label: 'Buyers', data: stateSorted.map(([,v])=>v),
-                   backgroundColor: PALETTE.blue, borderRadius: 4 }],
-    },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { ticks: { stepSize: 1 } }, y: { grid: { display: false } } },
-    },
-  });
-}
-
-// ═══════════════════════════════════════════════
-// TAB 3: FOOD & BEVERAGE
-// ═══════════════════════════════════════════════
-
-function renderTab3() {
-  const f = STATE.tab3;
-  let daily = filterDaily(DAILY_FNB, f);
-  if (f.visitType === 'marquee') daily = daily.filter(r => r.is_marquee);
-  if (f.visitType === 'regular') daily = daily.filter(r => !r.is_marquee);
-
-  const catKey = { food: 'food_revenue', beer_wine: 'beer_wine_revenue', non_alc: 'non_alc_revenue' };
-  const revKey = catKey[f.fnbCategory] || null;
-  const fans = filterFans(f, 'tab3');
-
-  const totalRev = daily.reduce((s,r) => s + (revKey ? r[revKey] : r.total_revenue), 0);
-  const totalTxns = daily.reduce((s,r) => s + r.transaction_count, 0);
-  const totalVisitors = daily.reduce((s,r) => s + r.unique_visitors_with_fnb, 0);
-  const avgPerCap = totalVisitors > 0 ? totalRev / totalVisitors : 0;
-  const avgTxnVal = totalTxns > 0 ? totalRev / totalTxns : 0;
-  const ticketFans = FANS.filter(fan => fan.ticketing_fan_id);
-  const attachRate = ticketFans.length > 0
-    ? ticketFans.filter(fan => fan.fnb_fan_id).length / ticketFans.length
-    : 0;
-  const catRevs = {
-    Food: daily.reduce((s,r) => s+r.food_revenue, 0),
-    'Beer & Wine': daily.reduce((s,r) => s+r.beer_wine_revenue, 0),
-    'Non-Alcoholic': daily.reduce((s,r) => s+r.non_alc_revenue, 0),
-  };
-  const topCat = Object.entries(catRevs).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
-
-  renderBANs('t3-bans', [
-    { label: 'Total F&B Revenue',     value: fmt.currency(totalRev) },
-    { label: 'Avg. Per-Cap Spend',    value: '$' + avgPerCap.toFixed(2) },
-    { label: 'F&B Attach Rate',       value: fmt.pct(attachRate) },
-    { label: 'Top Category',          value: topCat },
-    { label: 'Transactions',          value: fmt.num(totalTxns) },
-    { label: 'Avg. Transaction Value',value: '$' + avgTxnVal.toFixed(2) },
-  ]);
-
-  // Chart: F&B Revenue by Day
-  destroyChart('t3-revByDay');
-  const byDay = {};
-  daily.forEach(r => { byDay[r.date] = (byDay[r.date]||0) + (revKey ? r[revKey] : r.total_revenue); });
-  const dayLabels = Object.keys(byDay).sort();
-  CHARTS['t3-revByDay'] = new Chart(document.getElementById('t3-revByDay'), {
-    type: 'line',
-    data: {
-      labels: dayLabels,
-      datasets: [{ label: 'F&B Revenue', data: dayLabels.map(d=>byDay[d]),
-                   borderColor: PALETTE.teal, backgroundColor: 'rgba(0,168,150,.08)',
-                   fill: true, pointRadius: 0, tension: 0.3, borderWidth: 2 }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { ticks: { maxTicksLimit: 12,
-                       callback: (value) => dayLabels[value]?.slice(5) }, grid: { display: false } },
-                y: { ticks: { callback: v => fmt.currency(v) } } },
-    },
-  });
-
-  // Chart: Per-Cap Spend by Venue (bar)
-  destroyChart('t3-perCapVenue');
-  const venuePerCap = VENUES.map(v => {
-    const vRows = DAILY_FNB.filter(r => r.venue === v);
-    const vRev  = vRows.reduce((s,r)=>s+r.total_revenue,0);
-    const vVis  = vRows.reduce((s,r)=>s+r.unique_visitors_with_fnb,0);
-    return vVis > 0 ? vRev/vVis : 0;
-  });
-  CHARTS['t3-perCapVenue'] = new Chart(document.getElementById('t3-perCapVenue'), {
-    type: 'bar',
-    data: {
-      labels: VENUES,
-      datasets: [{ label: 'Per-Cap Spend', data: venuePerCap,
-                   backgroundColor: [PALETTE.navy, PALETTE.blue, PALETTE.slate], borderRadius: 4 }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { y: { ticks: { callback: v => '$'+v.toFixed(0) } } },
-    },
-  });
-
-  // Chart: Revenue by Category by Month (stacked bar)
-  destroyChart('t3-revByCategory');
-  const months = [...new Set(daily.map(r=>r.date.slice(0,7)))].sort();
-  const foodByMo = months.map(m => daily.filter(r=>r.date.startsWith(m)).reduce((s,r)=>s+r.food_revenue,0));
-  const beerByMo = months.map(m => daily.filter(r=>r.date.startsWith(m)).reduce((s,r)=>s+r.beer_wine_revenue,0));
-  const naByMo   = months.map(m => daily.filter(r=>r.date.startsWith(m)).reduce((s,r)=>s+r.non_alc_revenue,0));
-  CHARTS['t3-revByCategory'] = new Chart(document.getElementById('t3-revByCategory'), {
-    type: 'bar',
-    data: {
-      labels: months,
-      datasets: [
-        { label: 'Food',          data: foodByMo, backgroundColor: PALETTE.navy,  stack: 'cat' },
-        { label: 'Beer & Wine',   data: beerByMo, backgroundColor: PALETTE.blue,  stack: 'cat' },
-        { label: 'Non-Alcoholic', data: naByMo,   backgroundColor: PALETTE.slate, stack: 'cat' },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: {
-          callbacks: {
-            afterBody: items => {
-              const total = items.reduce((s, item) => s + item.raw, 0);
-              return [`Total: ${fmt.currency(total)}`];
-            },
-          },
-        },
-      },
-      scales: { x: { stacked: true }, y: { stacked: true, ticks: { callback: v=>fmt.currency(v) } } },
-    },
-  });
-
-  // Chart: Attach Rate by Event (horizontal bar)
-  destroyChart('t3-attachByEvent');
-  const attachByEv = EVENTS.map(ev => {
-    const tkt = DAILY_TICKETS.find(r => r.event_id === ev.id);
-    const fnb = DAILY_FNB.find(r => r.event_id === ev.id);
-    if (!tkt || !fnb || !tkt.tickets_sold) return { name: ev.name, rate: 0 };
-    return { name: ev.name, rate: fnb.unique_visitors_with_fnb / tkt.tickets_sold };
-  }).sort((a,b) => b.rate - a.rate);
-  CHARTS['t3-attachByEvent'] = new Chart(document.getElementById('t3-attachByEvent'), {
-    type: 'bar',
-    data: {
-      labels: attachByEv.map(e=>e.name),
-      datasets: [{ label: 'Attach Rate', data: attachByEv.map(e=>e.rate),
-                   backgroundColor: PALETTE.blue, borderRadius: 4 }],
-    },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { max: 1, ticks: { callback: v => fmt.pct(v) } }, y: { grid: { display: false } } },
-    },
-  });
-
-  // Chart: Per-Cap by Seat Category (horizontal bar)
-  destroyChart('t3-perCapSeat');
-  const premFans = fans.filter(fan => fan.seat_category === 'premium' && fan.fnb_spend);
-  const genFans  = fans.filter(fan => fan.seat_category === 'general'  && fan.fnb_spend);
-  const premPC = premFans.length > 0 ? premFans.reduce((s,fan)=>s+(fan.fnb_spend/Math.max(1,fan.fnb_visit_count)),0)/premFans.length : 0;
-  const genPC  = genFans.length  > 0 ? genFans.reduce((s,fan)=>s+(fan.fnb_spend/Math.max(1,fan.fnb_visit_count)),0)/genFans.length   : 0;
-  CHARTS['t3-perCapSeat'] = new Chart(document.getElementById('t3-perCapSeat'), {
-    type: 'bar',
-    data: {
-      labels: ['Premium', 'General Admission'],
-      datasets: [{ label: 'Per-Cap Spend', data: [premPC, genPC],
-                   backgroundColor: [PALETTE.navy, PALETTE.slate], borderRadius: 4 }],
-    },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { ticks: { callback: v => '$'+v.toFixed(0) } }, y: { grid: { display: false } } },
-    },
-  });
-}
-
-// ═══════════════════════════════════════════════
-// TAB 4: FAN IDENTITY
-// ═══════════════════════════════════════════════
-
-const VENN_POP = {
-  adw_only:   12400,
-  ticket_only: 8100,
-  fnb_only:    6300,
-  adw_ticket: 27000,
-  adw_fnb:    20000,
-  ticket_fnb:  9200,
-  all_three:  38000,
-};
-
-function renderTab4() {
-  const f = STATE.tab4;
-  const fans = filterFans(f, 'tab4');
-  const linkedFans = fans.filter(fan => fan.global_fan_id);
-
-  // Cross-channel spend uses daily arrays so it responds to the date filter
-  const dailyAdw = filterDaily(DAILY_ADW, f);
-  const dailyTkt = filterDaily(DAILY_TICKETS, f);
-  const dailyFnb = filterDaily(DAILY_FNB, f);
-  const periodHandle    = dailyAdw.reduce((s,r) => s + r.handle, 0);
-  const periodTicketRev = dailyTkt.reduce((s,r) => s + r.gross_revenue, 0);
-  const periodFnbRev    = dailyFnb.reduce((s,r) => s + r.total_revenue, 0);
-  const LINKED_TOTAL    = 94200;
-  const avgXCS = LINKED_TOTAL > 0 ? (periodHandle + periodTicketRev + periodFnbRev) / LINKED_TOTAL : 0;
-
-  // Identity metrics below are full-season by definition — date range doesn't apply
-  const adwFans   = FANS.filter(fan => fan.adw_fan_id);
-  const tickFans  = FANS.filter(fan => fan.ticketing_fan_id);
-  const adwAndTkt = FANS.filter(fan => fan.adw_fan_id && fan.ticketing_fan_id);
-  const tktNoAdw  = FANS.filter(fan => fan.ticketing_fan_id && !fan.adw_fan_id);
-
-  const adwAlsoBuyTkt = adwFans.length > 0 ? adwAndTkt.length / adwFans.length : 0;
-  const tktNoWager    = tickFans.length > 0 ? tktNoAdw.length / tickFans.length : 0;
-
-  const threshold = getTop10PctThreshold();
-  const avgConf = linkedFans.length > 0
-    ? linkedFans.reduce((s,fan)=>s+(fan.match_confidence_score||0),0)/linkedFans.length
-    : 0;
-
-  renderBANs('t4-bans', [
-    { label: 'Combined Cross-Channel Spend per Fan', value: fmt.currency(avgXCS), lead: true,
-      tooltip: 'Total ADW handle + ticket revenue + F&B revenue in selected period, divided by total linked fans. Changes with date range.' },
-    { label: '% ADW Bettors Who Also Buy Tickets', value: fmt.pct(adwAlsoBuyTkt),
-      tooltip: 'Active ADW bettors = accounts with at least one wager in the selected date window. Cross-referenced with ticketing system via P3RL linking.' },
-    { label: '% Ticket Buyers with No Wagering History', value: fmt.pct(tktNoWager),
-      tooltip: 'Ticket buyers who have no linked ADW account. Prime ADW acquisition targets — they already attend events but have not opened a wagering account.' },
-    { label: 'Top Decile Spend Threshold', value: fmt.currency(threshold),
-      tooltip: 'A fan must exceed this total cross-channel spend (ADW handle + ticket spend + F&B spend) to rank in the top 10% of linked fans.' },
-    { label: 'Total Linked Fans', value: fmt.num(LINKED_TOTAL),
-      tooltip: 'Linked fans = records matched across two or more source systems by P3RL with confidence score above threshold.' },
-    { label: 'Avg. Match Confidence', value: fmt.pct(avgConf),
-      tooltip: 'P3RL match confidence score — probability that two records belong to the same individual. Threshold for linking: 85%.' },
-  ]);
-
-  // Venn Diagram
-  destroyChart('t4-venn');
-  CHARTS['t4-venn'] = new Chart(document.getElementById('t4-venn'), {
-    type: 'venn',
-    data: {
-      labels: ['ADW Wagering', 'Ticket Sales', 'Food & Beverage'],
+      labels: sortedGames.map(g => g.date.slice(5)),
       datasets: [{
-        label: 'Fan Overlap',
-        data: [
-          { sets: ['ADW Wagering'],                          value: VENN_POP.adw_only },
-          { sets: ['Ticket Sales'],                          value: VENN_POP.ticket_only },
-          { sets: ['Food & Beverage'],                       value: VENN_POP.fnb_only },
-          { sets: ['ADW Wagering', 'Ticket Sales'],          value: VENN_POP.adw_ticket },
-          { sets: ['ADW Wagering', 'Food & Beverage'],       value: VENN_POP.adw_fnb },
-          { sets: ['Ticket Sales', 'Food & Beverage'],       value: VENN_POP.ticket_fnb },
-          { sets: ['ADW Wagering', 'Ticket Sales', 'Food & Beverage'], value: VENN_POP.all_three },
-        ],
-        backgroundColor: [
-          // Single-source regions — three distinct circles
-          'rgba(27,42,74,0.58)',      // ADW only — navy
-          'rgba(46,97,143,0.58)',     // Ticket only — blue
-          'rgba(0,168,150,0.62)',     // F&B only — teal
-          // Two-circle overlaps — plausible midpoint blends
-          'rgba(36,70,108,0.65)',     // ADW ∩ Ticket — navy-blue
-          'rgba(14,88,97,0.65)',      // ADW ∩ F&B — navy-teal
-          'rgba(23,130,146,0.62)',    // Ticket ∩ F&B — blue-teal
-          // Center — all three, darkest to signal maximum overlap
-          'rgba(20,72,98,0.80)',      // ADW ∩ Ticket ∩ F&B
-        ],
+        label: 'No-Show Rate',
+        data: sortedGames.map(g => { const s = fScans.find(r => r.game_id === g.id); return s ? s.no_show_rate : 0; }),
+        backgroundColor: noShowColors,
+        borderRadius: 2,
       }],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => {
-              const d = ctx.dataset.data[ctx.dataIndex];
-              return `${d.sets.join(' ∩ ')}: ${d.value.toLocaleString()} fans`;
+        annotation: {
+          annotations: {
+            avgLine: {
+              type: 'line', yMin: seasonAvgNoShow, yMax: seasonAvgNoShow,
+              borderColor: PALETTE.navy, borderWidth: 1, borderDash: [4, 4],
+              label: { content: `Season avg ${fmt.pct(seasonAvgNoShow)}`, display: true, position: 'end', font: { size: 10 } },
             },
           },
         },
-      },
-      scales: {
-        // x-scale drives the intersection value labels (numbers inside the circles)
-        x: { ticks: { color: '#ffffff', font: { size: 12, weight: '600' } } },
-        // y-scale drives the set name labels (ADW Wagering, Ticket Sales, F&B) — keep dark
-        y: { ticks: { color: '#374151', font: { size: 12 } } },
-      },
-    },
-  });
-
-  // VIP Tier vs. Cross-Channel Spend (scatter)
-  destroyChart('t4-vipScatter');
-  const tierOrder   = { platinum: 4, gold: 3, silver: 2, standard: 1 };
-  const tierMeta    = {
-    platinum: { label: 'Platinum', color: 'rgba(190,195,205,0.85)' },
-    gold:     { label: 'Gold',     color: 'rgba(232,160,32,0.72)'  },
-    silver:   { label: 'Silver',   color: 'rgba(91,127,166,0.70)'  },
-    standard: { label: 'Standard', color: 'rgba(27,42,74,0.70)'    },
-  };
-  const tierDatasets = ['standard','silver','gold','platinum'].map(tier => ({
-    label: tierMeta[tier].label,
-    data: linkedFans
-      .filter(fan => fan.adw_vip_tier === tier && fan.total_cross_channel_spend)
-      .map((fan, i) => ({
-        x:       tierOrder[tier] + ((((fan.total_cross_channel_spend * 7 + i * 13) % 100) / 100) - 0.5) * 0.36,
-        y:       fan.total_cross_channel_spend,
-        state:   fan.adw_state   || fan.home_state || '—',
-        venue:   fan.adw_venue   || fan.primary_venue || '—',
-        adw:     fan.adw_handle  || 0,
-        tickets: fan.ticket_spend || 0,
-        fnb:     fan.fnb_spend   || 0,
-      })),
-    backgroundColor: tierMeta[tier].color,
-    pointRadius: 4,
-  }));
-
-  // Mean marker datasets — one horizontal dash per tier showing avg XCS
-  const meanDatasets = ['standard','silver','gold','platinum'].map(tier => {
-    const fans = linkedFans.filter(f => f.adw_vip_tier === tier && f.total_cross_channel_spend);
-    const mean = fans.length ? fans.reduce((s, f) => s + f.total_cross_channel_spend, 0) / fans.length : 0;
-    const x = tierOrder[tier];
-    return {
-      label: `${tierMeta[tier].label} Avg`,
-      data: [{ x: x - 0.28, y: mean }, { x: x + 0.28, y: mean }],
-      type: 'line',
-      borderColor: tierMeta[tier].color.replace(/[\d.]+\)$/, '1)'),
-      borderWidth: 3,
-      pointRadius: 0,
-      tension: 0,
-      showLine: true,
-      tooltip: { filter: () => false },
-    };
-  });
-  CHARTS['t4-vipScatter'] = new Chart(document.getElementById('t4-vipScatter'), {
-    type: 'scatter',
-    data: { datasets: [...tierDatasets, ...meanDatasets] },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { filter: item => !item.text.includes('Avg') },
-        },
-        tooltip: {
-          mode: 'nearest',
-          intersect: true,
-          filter: item => !item.dataset.label.includes('Avg'),
-          callbacks: {
-            title: ctx => {
-              const p = ctx[0]?.raw;
-              return p ? `${ctx[0].dataset.label}  •  ${p.state}  •  ${p.venue}` : '';
-            },
-            label: ctx => {
-              const p = ctx.raw;
-              return [
-                `Total XCS: ${fmt.currency(p.y)}`,
-                `ADW ${fmt.currency(p.adw)}   Tickets ${fmt.currency(p.tickets)}   F&B ${fmt.currency(p.fnb)}`,
-              ];
-            },
-          },
-        },
-      },
-      scales: {
-        x: { min: 0.5, max: 4.5, ticks: { stepSize: 1,
-               callback: v => ['','Standard','Silver','Gold','Platinum'][v] || '' } },
-        y: { ticks: { callback: v => fmt.currency(v) } },
-      },
-    },
-  });
-
-  // Top Decile — Cross-Channel Spend Breakdown (stacked horizontal bar)
-  destroyChart('t4-topDecile');
-  const topFans = [...linkedFans]
-    .sort((a,b)=>b.total_cross_channel_spend-a.total_cross_channel_spend)
-    .slice(0, Math.max(1, Math.floor(linkedFans.length*0.10)));
-  const topN = topFans.slice(0, 10);
-  const avgFanXCS = linkedFans.length
-    ? linkedFans.reduce((s, f) => s + (f.total_cross_channel_spend || 0), 0) / linkedFans.length
-    : 0;
-  const TIER_ABBREV = { platinum: 'Plat', gold: 'Gold', silver: 'Silv', standard: 'Std' };
-  CHARTS['t4-topDecile'] = new Chart(document.getElementById('t4-topDecile'), {
-    type: 'bar',
-    data: {
-      labels: topN.map(fan => {
-        const tier  = TIER_ABBREV[fan.adw_vip_tier] || '—';
-        const state = fan.adw_state || fan.home_state || '—';
-        return `${tier} • ${state}`;
-      }),
-      datasets: [
-        { label: 'ADW Handle',   data: topN.map(fan=>fan.adw_handle||0),   backgroundColor: PALETTE.navy,  stack: 's' },
-        { label: 'Ticket Spend', data: topN.map(fan=>fan.ticket_spend||0), backgroundColor: PALETTE.blue,  stack: 's' },
-        { label: 'F&B Spend',    data: topN.map(fan=>fan.fnb_spend||0),    backgroundColor: PALETTE.slate, stack: 's' },
-      ],
-    },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      layout: { padding: { right: 80 } },
-      plugins: {
-        legend: { position: 'bottom' },
         tooltip: {
           callbacks: {
             title: items => {
-              const fan = topN[items[0]?.dataIndex];
-              if (!fan) return '';
-              const tier  = TIER_ABBREV[fan.adw_vip_tier] || '—';
-              const state = fan.adw_state || fan.home_state || '—';
-              return `${tier} • ${state}`;
+              const g = sortedGames[items[0]?.dataIndex];
+              return g ? `${g.date} vs. ${g.opponent}` : '';
             },
-            afterBody: items => {
-              const total = items.reduce((s, item) => s + item.raw, 0);
-              return [`Total XCS: ${fmt.currency(total)}`];
+            label: ctx => `No-show: ${fmt.pct(ctx.raw)}`,
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 12 }, grid: { display: false } },
+        y: { ticks: { callback: v => fmt.pct(v) }, max: 0.18 },
+      },
+    },
+  });
+
+  // ── Chart 3: Arrival Distribution ──
+  destroyChart('t1-arrivalDist');
+  const arrBuckets = ['arr_90plus', 'arr_60to90', 'arr_30to60', 'arr_0to30', 'arr_post_pitch'];
+  const arrLabels  = ['90+ min early', '60–90 min', '30–60 min', '0–30 min', 'After first pitch'];
+  const arrColors  = [PALETTE.navy, PALETTE.navyMid, PALETTE.navySoft, PALETTE.gray, PALETTE.gray2];
+  const arrDatasets3 = [];
+
+  if (mode === 'all') {
+    const months = [...new Set(focused.map(g => g.month))].sort((a, b) => a - b);
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const monthLabels3 = months.map(m => monthNames[m]);
+    arrBuckets.forEach((bucket, bi) => {
+      arrDatasets3.push({
+        label: arrLabels[bi],
+        data: months.map(m => {
+          const rows = fScans.filter(r => {
+            const g = GAME_BY_ID[r.game_id];
+            return g && g.month === m;
+          });
+          return rows.length ? rows.reduce((s, r) => s + r[bucket], 0) / rows.length : 0;
+        }),
+        backgroundColor: arrColors[bi],
+      });
+    });
+    CHARTS['t1-arrivalDist'] = new Chart(document.getElementById('t1-arrivalDist'), {
+      type: 'bar',
+      data: { labels: monthLabels3, datasets: arrDatasets3 },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          x: { stacked: true, grid: { display: false } },
+          y: { stacked: true, ticks: { callback: v => fmt.pct(v) }, max: 1 },
+        },
+      },
+    });
+  } else {
+    const focusedAvg = arrBuckets.map(b => fScans.length ? fScans.reduce((s, r) => s + r[b], 0) / fScans.length : 0);
+    const baselineAvg = arrBuckets.map(b => bScans.length ? bScans.reduce((s, r) => s + r[b], 0) / bScans.length : 0);
+    arrBuckets.forEach((_, bi) => {
+      arrDatasets3.push({
+        label: arrLabels[bi],
+        data: [focusedAvg[bi], STATE.showSeasonAvg ? baselineAvg[bi] : null],
+        backgroundColor: arrColors[bi],
+        stack: 'arrival',
+      });
+    });
+    CHARTS['t1-arrivalDist'] = new Chart(document.getElementById('t1-arrivalDist'), {
+      type: 'bar',
+      data: { labels: [STATE.opponent, 'Season Avg'], datasets: arrDatasets3 },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          x: { stacked: true, grid: { display: false } },
+          y: { stacked: true, ticks: { callback: v => fmt.pct(v) }, max: 1 },
+        },
+      },
+    });
+  }
+
+  // ── Chart 4: No-Show Rate by Ticket Type (aggregate horizontal bar) ──
+  destroyChart('t1-noshowByType');
+  const stmNS    = fScans.reduce((s, r) => s + r.stm_no_show_rate, 0) / (fScans.length || 1);
+  const singleNS = fScans.reduce((s, r) => s + r.single_no_show_rate, 0) / (fScans.length || 1);
+  const secNS    = fScans.reduce((s, r) => s + r.secondary_no_show_rate, 0) / (fScans.length || 1);
+
+  CHARTS['t1-noshowByType'] = new Chart(document.getElementById('t1-noshowByType'), {
+    type: 'bar',
+    data: {
+      labels: ['Lone Star Member', 'Single Game', 'Secondary Market'],
+      datasets: [{
+        label: 'No-Show Rate',
+        data: [stmNS, singleNS, secNS],
+        backgroundColor: [PALETTE.navy, PALETTE.navyMid, PALETTE.navySoft],
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const ratio = ctx.dataIndex === 2 ? (secNS / stmNS).toFixed(1) : null;
+              return ratio
+                ? `${fmt.pct(ctx.raw)} — ${ratio}× the Lone Star Member rate`
+                : fmt.pct(ctx.raw);
             },
           },
         },
       },
       scales: {
-        x: { stacked: true, ticks: { callback: v=>fmt.currency(v) } },
-        y: { stacked: true, grid: { display: false } },
+        x: { ticks: { callback: v => fmt.pct(v) } },
+        y: { grid: { display: false } },
       },
     },
-    plugins: [{
-      id: 'topDecileTotals',
-      afterDraw(chart) {
-        const ctx = chart.ctx;
-        ctx.save();
-        ctx.font = '11px "Inter", system-ui, sans-serif';
-        ctx.fillStyle = '#1B2A4A';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        const lastMeta = chart.getDatasetMeta(chart.data.datasets.length - 1);
-        lastMeta.data.forEach((bar, i) => {
-          const total = chart.data.datasets.reduce((s, ds) => s + (ds.data[i] || 0), 0);
-          ctx.fillText(fmt.currency(total), bar.x + 5, bar.y);
-        });
-
-        // Average fan reference line
-        if (avgFanXCS > 0) {
-          const xPx = chart.scales.x.getPixelForValue(avgFanXCS);
-          const { top, bottom } = chart.chartArea;
-          ctx.setLineDash([5, 4]);
-          ctx.strokeStyle = '#8B96A5';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.moveTo(xPx, top);
-          ctx.lineTo(xPx, bottom);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.font = '10px "Inter", system-ui, sans-serif';
-          ctx.fillStyle = '#8B96A5';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillText(`Avg: ${fmt.currency(avgFanXCS)}`, xPx, top + 4);
-        }
-
-        ctx.restore();
-      },
-    }],
   });
 
-  // Single-Source vs. Linked by Venue (stacked bar)
-  destroyChart('t4-linkageByVenue');
-  const venueLinked = VENUES.map(v => FANS.filter(fan=>fan.primary_venue===v && fan.global_fan_id).length);
-  const venueSingle = VENUES.map(v => FANS.filter(fan=>fan.primary_venue===v && !fan.global_fan_id).length);
-  CHARTS['t4-linkageByVenue'] = new Chart(document.getElementById('t4-linkageByVenue'), {
-    type: 'bar',
+  // ── Chart 5: Lone Star Member Scan Rate by Month ──
+  destroyChart('t1-stmScanRate');
+  const months5 = [...new Set(focused.map(g => g.month))].sort((a, b) => a - b);
+  const monthNames5 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const stmByMonth = months5.map(m => {
+    const rows = fScans.filter(r => { const g = GAME_BY_ID[r.game_id]; return g && g.month === m; });
+    return rows.length ? rows.reduce((s, r) => s + (1 - r.stm_no_show_rate), 0) / rows.length : 0;
+  });
+
+  CHARTS['t1-stmScanRate'] = new Chart(document.getElementById('t1-stmScanRate'), {
+    type: 'line',
     data: {
-      labels: VENUES,
-      datasets: [
-        { label: 'Linked',        data: venueLinked, backgroundColor: PALETTE.blue, stack: 's' },
-        { label: 'Single-Source', data: venueSingle, backgroundColor: PALETTE.gray, stack: 's' },
-      ],
+      labels: months5.map(m => monthNames5[m]),
+      datasets: [{
+        label: 'Lone Star Member Scan Rate',
+        data: stmByMonth,
+        borderColor: PALETTE.navy,
+        backgroundColor: `rgba(0,50,120,0.07)`,
+        fill: true, pointRadius: 4, borderWidth: 2, tension: 0.3,
+      }],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { ticks: { callback: v => fmt.pct(v) }, min: 0.80, max: 1.0 },
+      },
+    },
+  });
+
+  // ── Chart 6: Group Scan Distribution (donut) ──
+  destroyChart('t1-groupScanDist');
+  const soloAvg    = fScans.length ? fScans.reduce((s, r) => s + r.solo_scan_pct, 0) / fScans.length : 0;
+  const group23Avg = fScans.length ? fScans.reduce((s, r) => s + r.group_2to3_pct, 0) / fScans.length : 0;
+  const group4Avg  = fScans.length ? fScans.reduce((s, r) => s + r.group_4plus_pct, 0) / fScans.length : 0;
+
+  CHARTS['t1-groupScanDist'] = new Chart(document.getElementById('t1-groupScanDist'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Solo (1 ticket)', 'Small Group (2–3)', 'Large Group (4+)'],
+      datasets: [{ data: [soloAvg, group23Avg, group4Avg],
+                   backgroundColor: [PALETTE.navy, PALETTE.navyMid, PALETTE.navySoft], borderWidth: 0 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
       plugins: {
         legend: { position: 'bottom' },
         tooltip: {
           callbacks: {
-            afterBody: items => {
-              const i = items[0]?.dataIndex;
-              const linked = venueLinked[i] || 0;
-              const single = venueSingle[i] || 0;
-              const total  = linked + single;
-              const pct = total > 0 ? (linked / total * 100).toFixed(1) : '0';
-              return [`Linked Rate: ${pct}%`];
+            label: ctx => {
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              return `${ctx.label}: ${fmt.pct(ctx.raw / total)}`;
             },
           },
         },
       },
-      scales: { x: { stacked: true }, y: { stacked: true } },
     },
-  });
-
-  // Geographic Distribution — Linked Fans Top 10 States
-  destroyChart('t4-geoLinked');
-  const geoMap = {};
-  linkedFans.forEach(fan => { if (fan.home_state) geoMap[fan.home_state] = (geoMap[fan.home_state]||0)+1; });
-  const geoSorted = Object.entries(geoMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  CHARTS['t4-geoLinked'] = new Chart(document.getElementById('t4-geoLinked'), {
-    type: 'bar',
-    data: {
-      labels: geoSorted.map(([s])=>s),
-      datasets: [{ label: 'Linked Fans', data: geoSorted.map(([,v])=>v),
-                   backgroundColor: PALETTE.blue, borderRadius: 4 }],
-    },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { y: { grid: { display: false } } },
-    },
-  });
-
-  // Map: linked fan distribution by state — executive KPI tooltip
-  const linkedStateDataMap = {};
-  linkedFans.forEach(fan => {
-    const s = fan.home_state;
-    if (!s) return;
-    if (!linkedStateDataMap[s]) linkedStateDataMap[s] = { count: 0, xcs: 0, topTier: 0 };
-    linkedStateDataMap[s].count++;
-    linkedStateDataMap[s].xcs += fan.total_cross_channel_spend || 0;
-    if (fan.adw_vip_tier === 'platinum' || fan.adw_vip_tier === 'gold') linkedStateDataMap[s].topTier++;
-  });
-  const totalLinkedFans = linkedFans.length || 1;
-  renderStateMap('t4-map', linkedStateDataMap, (abbr, name, d) => {
-    if (!d || !d.count) return `<strong>${name}</strong><br><span style="opacity:.7">No linked fans</span>`;
-    const fanPct    = (d.count / totalLinkedFans * 100).toFixed(1);
-    const avgState  = fmt.currency(d.xcs / d.count);
-    const avgNat    = fmt.currency(avgFanXCS);
-    const topTierPct = (d.topTier / d.count * 100).toFixed(0);
-    const revSign   = d.xcs / d.count > avgFanXCS ? '▲' : '▼';
-    return [
-      `<strong>${name}</strong>`,
-      `${fmt.num(d.count)} fans &nbsp;·&nbsp; ${fanPct}% of base`,
-      `Revenue pool: ${fmt.currency(d.xcs)}`,
-      `Avg XCS: ${avgState} ${revSign} (nat. avg ${avgNat})`,
-      `Gold+ fans: ${topTierPct}%`,
-    ].join('<br>');
   });
 }
-
-// ═══════════════════════════════════════════════
-// CHOROPLETH MAP
-// ═══════════════════════════════════════════════
-
-const FIPS_TO_ABBR = {
-  '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT',
-  '10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL',
-  '18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD',
-  '25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE',
-  '32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY','37':'NC','38':'ND',
-  '39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC','46':'SD',
-  '47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV',
-  '55':'WI','56':'WY',
-};
-
-const STATE_NAMES = {
-  AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',
-  CO:'Colorado',CT:'Connecticut',DE:'Delaware',DC:'D.C.',FL:'Florida',
-  GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',
-  IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',
-  MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',
-  MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',
-  NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',
-  NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',
-  OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',
-  SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',
-  VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',
-};
-
-// stateDataMap: { [abbr]: { count, ...rest } }
-// tooltipFn: (abbr, stateName, data) => HTML string
-async function renderStateMap(containerId, stateDataMap, tooltipFn) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  container.innerHTML = '';
-
-  if (!window._usStatesData) {
-    try {
-      window._usStatesData = await fetch(
-        'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json'
-      ).then(r => r.json());
-    } catch {
-      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#8B96A5;font-size:12px;">Map unavailable (offline)</div>';
-      return;
-    }
-  }
-
-  const us = window._usStatesData;
-  const stateFeatures = topojson.feature(us, us.objects.states).features;
-
-  const W = Math.max(container.clientWidth || 0, 300);
-  const H = container.clientHeight || 260;
-
-  const projection = d3.geoAlbersUsa()
-    .fitSize([W, H], topojson.feature(us, us.objects.states));
-  const pathGen = d3.geoPath().projection(projection);
-
-  const maxVal = Math.max(...Object.values(stateDataMap).map(d => d.count || 0), 1);
-
-  function stateColor(abbr) {
-    const count = ((stateDataMap[abbr] || {}).count || 0);
-    // Log scale so secondary states aren't invisible when one state dominates
-    const t = count > 0 ? Math.log(count + 1) / Math.log(maxVal + 1) : 0;
-    // Light ice blue (#E8F4FD) → brand navy (#1B2A4A)
-    const r = Math.round(232 - 205 * t);
-    const g = Math.round(244 - 202 * t);
-    const b = Math.round(253 - 179 * t);
-    return `rgb(${r},${g},${b})`;
-  }
-
-  const svg = d3.select(container)
-    .append('svg')
-    .attr('viewBox', `0 0 ${W} ${H}`)
-    .attr('preserveAspectRatio', 'xMidYMid meet')
-    .style('width', '100%')
-    .style('height', '100%');
-
-  const tip = d3.select(container)
-    .append('div')
-    .attr('class', 'map-tooltip');
-
-  svg.selectAll('path')
-    .data(stateFeatures)
-    .enter()
-    .append('path')
-    .attr('d', pathGen)
-    .attr('fill', d => {
-      const abbr = FIPS_TO_ABBR[String(d.id).padStart(2, '0')];
-      return stateColor(abbr);
-    })
-    .attr('stroke', '#fff')
-    .attr('stroke-width', 0.6)
-    .on('mousemove', function(event, d) {
-      const abbr = FIPS_TO_ABBR[String(d.id).padStart(2, '0')] || '—';
-      const name = STATE_NAMES[abbr] || abbr;
-      const data = stateDataMap[abbr] || null;
-      tip.style('display', 'block')
-         .style('left', (event.offsetX + 12) + 'px')
-         .style('top',  (event.offsetY - 32) + 'px')
-         .html(tooltipFn(abbr, name, data));
-    })
-    .on('mouseleave', () => tip.style('display', 'none'));
-
-  // Gradient legend
-  const legendId = containerId + '-grad';
-  const defs = svg.append('defs');
-  const grad = defs.append('linearGradient').attr('id', legendId);
-  grad.append('stop').attr('offset', '0%').attr('stop-color', stateColor(null));
-  grad.append('stop').attr('offset', '100%').attr('stop-color', '#1B2A4A');
-
-  const leg = svg.append('g').attr('transform', `translate(${W - 110}, ${H - 22})`);
-  leg.append('rect').attr('width', 80).attr('height', 8)
-     .attr('rx', 2).attr('fill', `url(#${legendId})`);
-  leg.append('text').attr('y', 18).attr('font-size', 9)
-     .attr('fill', '#8B96A5').text('Fewer');
-  leg.append('text').attr('x', 80).attr('y', 18).attr('font-size', 9)
-     .attr('text-anchor', 'end').attr('fill', '#8B96A5').text('More');
-  leg.append('text').attr('x', 40).attr('y', 26).attr('font-size', 8)
-     .attr('text-anchor', 'middle').attr('fill', '#8B96A5').text('log scale');
-}
-
-// ═══════════════════════════════════════════════
-// CHART TOOLTIPS
-// ═══════════════════════════════════════════════
-const CHART_TOOLTIPS = {
-  't1-handleByDay':      'Total betting handle wagered each day. Handle = gross wagers before payouts. Responds to Date Range, Venue, and Channel filters.',
-  't1-marqueeBar':       'Compares current-year handle for each marquee event against two prior peak seasons. Uses full-year unfiltered data — date filter does not affect this chart.',
-  't1-depWithDay':       'Bars: daily deposits (funds added) vs. withdrawals (funds removed). Dashed line: Daily Net = deposits minus withdrawals for that day, plotted on the right axis. Positive net = more money came in than left.',
-  't1-channelDonut':     'Split of total handle between mobile app and web platform wagers over the selected period.',
-  't1-handleByState':    'Top 10 states by total handle wagered. Figures are extrapolated from the 500-fan sample to the full book size.',
-  't2-tktOverTime':      'Monthly ticket purchases across the selected date range. Aggregated by calendar month.',
-  't2-soldByEvent':      'Total tickets sold per marquee event for the full year. Uses unfiltered data — reflects all-season totals regardless of date filter.',
-  't2-revByEventSeat':   'Gross ticket revenue per marquee event, split between Premium and General Admission seat categories.',
-  't2-historicalMarquee':'Current-year total ticket revenue per marquee event vs. two prior peak seasons.',
-  't2-buyersByState':    'Top 10 states by number of unique ticket purchasers. Based on filtered fan records.',
-  't3-revByDay':         'Total F&B revenue per day over the selected date range. Responds to Venue, Date Range, and F&B Category filters.',
-  't3-perCapVenue':      'Average F&B spend per visitor who made at least one F&B transaction, broken out by venue. Uses full-year data.',
-  't3-revByCategory':    'Monthly F&B revenue stacked by category (Food, Beer & Wine, Non-Alcoholic). Responds to date and venue filters.',
-  't3-attachByEvent':    'Percentage of ticket buyers who also made an F&B purchase at each marquee event. Attach rate = F&B visitors / tickets sold.',
-  't3-perCapSeat':       'Average F&B spend per visit for fans in Premium vs. General Admission seating. Based on filtered fan records.',
-  't4-venn':             'Fan overlap across the three source systems. Hover over each region to see population count. Figures represent total book, not just the 500-fan sample.',
-  't4-vipScatter':       'Each dot is a linked fan. X-axis = ADW VIP tier; Y-axis = total cross-channel spend. Shows whether higher ADW tiers correspond to higher total fan value.',
-  't4-topDecile':        'Top 10 fans by total cross-channel spend. Bars are stacked by ADW handle, ticket spend, and F&B spend to show where high-value fans generate revenue.',
-  't4-linkageByVenue':   'For each venue, the proportion of fans successfully linked across two or more source systems (Linked) vs. those appearing in only one system (Single-Source).',
-  't4-geoLinked':        'Top 10 home states for linked fans — fans whose identity was resolved across at least two source systems.',
-};
