@@ -755,3 +755,249 @@ function renderTab3() {
     },
   });
 }
+
+// ═══════════════════════════════════════════════
+// TAB 4: FAN IDENTITY
+// ═══════════════════════════════════════════════
+function renderTab4() {
+  const f = STATE.tab4;
+  const fans4 = filterFans(f, 'tab4');
+
+  // ── BANs ──
+  const linkedFans    = FANS.filter(x => x.global_fan_id);
+  const linkedInView  = fans4.filter(x => x.global_fan_id);
+  const avgXCS        = linkedInView.length
+    ? linkedInView.reduce((s, x) => s + x.total_cross_channel_spend, 0) / linkedInView.length : 0;
+  const scansMatched  = FANS.filter(x => x.scan_fan_id && x.global_fan_id).length;
+  const totalScans    = FANS.filter(x => x.scan_fan_id).length;
+  const pctMatched    = totalScans > 0 ? scansMatched / totalScans : 0;
+  const darkFansCount = FANS.filter(x => x.linked_sources === 'SCAN|FNB').length;
+  const avgConf       = linkedFans.length
+    ? linkedFans.reduce((s, x) => s + (x.match_confidence_score || 0), 0) / linkedFans.length : 0;
+  const threshold     = getTop10PctThreshold();
+
+  renderBANs('t4-bans', [
+    { label: 'Cross-Channel Spend / Fan',  value: fmt.currency(Math.round(avgXCS)) },
+    { label: '% Scans Matched to Known Fan', value: fmt.pct(pctMatched) },
+    { label: 'Secondary Market Dark Fans', value: String(darkFansCount), lead: true },
+    { label: 'Total Linked Fans',          value: String(linkedFans.length) },
+    { label: 'Avg Match Confidence',       value: fmt.pct(avgConf) },
+    { label: 'Top Decile Spend Threshold', value: fmt.currency(threshold) },
+  ]);
+
+  // ── Chart 1: Fan Population Overlap — Venn ──
+  destroyChart('t4-venn');
+  // Segment counts from FANS (static — independent of tab filters)
+  const seg = {
+    tkt:    FANS.filter(x => x.linked_sources === 'TICKET').length,           // 68
+    scan:   FANS.filter(x => x.linked_sources === 'SCAN').length,             // 40
+    fnb:    FANS.filter(x => x.linked_sources === 'FNB').length,              // 30
+    ts:     FANS.filter(x => x.linked_sources === 'TICKET|SCAN').length,      // 95
+    tf:     FANS.filter(x => x.linked_sources === 'TICKET|FNB').length,       // 65
+    sf:     FANS.filter(x => x.linked_sources === 'SCAN|FNB').length,         // 42
+    tsf:    FANS.filter(x => x.linked_sources === 'TICKET|SCAN|FNB').length,  // 160
+  };
+
+  CHARTS['t4-venn'] = new Chart(document.getElementById('t4-venn'), {
+    type: 'venn',
+    data: {
+      labels: ['Ticketmaster', 'Gate Scans', 'F&B'],
+      datasets: [{
+        label: 'Fan Sources',
+        data: [
+          { sets: ['Ticketmaster'],                    value: seg.tkt + seg.ts + seg.tf + seg.tsf },
+          { sets: ['Gate Scans'],                      value: seg.scan + seg.ts + seg.sf + seg.tsf },
+          { sets: ['F&B'],                             value: seg.fnb + seg.tf + seg.sf + seg.tsf },
+          { sets: ['Ticketmaster', 'Gate Scans'],      value: seg.ts + seg.tsf },
+          { sets: ['Ticketmaster', 'F&B'],             value: seg.tf + seg.tsf },
+          { sets: ['Gate Scans', 'F&B'],               value: seg.sf + seg.tsf },
+          { sets: ['Ticketmaster', 'Gate Scans', 'F&B'], value: seg.tsf },
+        ],
+        backgroundColor: [
+          'rgba(0,50,120,0.25)', 'rgba(26,74,138,0.25)', 'rgba(61,107,168,0.25)',
+          'rgba(0,50,120,0.35)', 'rgba(0,50,120,0.35)', 'rgba(72,202,178,0.50)',
+          'rgba(0,50,120,0.55)',
+        ],
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.raw.sets.join('|') === 'Gate Scans|F&B') {
+                return [`${ctx.raw.value} fans — secondary market buyers`, 'No Ticketmaster record — invisible to CRM', 'Surfaced by P3RL through F&B matching'];
+              }
+              return `${ctx.raw.value} fans`;
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // ── Chart 2: Membership Tier vs. Cross-Channel Spend (scatter with jitter) ──
+  destroyChart('t4-spendByTier');
+  const tierMap  = { lone_star: 0, single_game: 1, secondary: 2 };
+  const tierCols = [PALETTE.navy, PALETTE.navyMid, PALETTE.navySoft];
+  const tierDisplayLabels = ['Lone Star Member', 'Single Game', 'Secondary Market'];
+
+  const scatterDatasets = ['lone_star', 'single_game', 'secondary'].map((tier, ti) => {
+    const fans4tier = fans4.filter(x => x.ticket_type === tier && x.total_cross_channel_spend != null);
+    return {
+      label: tierDisplayLabels[ti],
+      data: fans4tier.map((x, i) => ({
+        x: ti + (((i * 7 + 3) % 17) / 17 - 0.5) * 0.5,  // jitter within ±0.25
+        y: x.total_cross_channel_spend,
+      })),
+      backgroundColor: tierCols[ti] + '99',
+      pointRadius: 4,
+    };
+  });
+
+  // Mean markers per tier
+  const meanDataset = ['lone_star', 'single_game', 'secondary'].map((tier, ti) => {
+    const vals = fans4.filter(x => x.ticket_type === tier && x.total_cross_channel_spend != null)
+                       .map(x => x.total_cross_channel_spend);
+    const mean = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    return { x: ti, y: mean };
+  });
+  scatterDatasets.push({
+    label: 'Tier Mean',
+    data: meanDataset,
+    backgroundColor: PALETTE.red,
+    pointRadius: 7, pointStyle: 'crossRot', borderColor: PALETTE.red, borderWidth: 2,
+  });
+
+  CHARTS['t4-spendByTier'] = new Chart(document.getElementById('t4-spendByTier'), {
+    type: 'scatter',
+    data: { datasets: scatterDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: { callbacks: { label: ctx => `$${fmt.currency(ctx.raw.y)}` } },
+      },
+      scales: {
+        x: {
+          min: -0.5, max: 2.5,
+          ticks: { callback: v => tierDisplayLabels[Math.round(v)] || '', stepSize: 1 },
+          grid: { display: false },
+        },
+        y: { ticks: { callback: v => fmt.currency(v) } },
+      },
+    },
+  });
+
+  // ── Chart 3: Top Decile Fans — Cross-Channel Spend Breakdown ──
+  destroyChart('t4-topDecile');
+  const top10 = [...fans4.filter(x => x.global_fan_id)]
+    .sort((a, b) => b.total_cross_channel_spend - a.total_cross_channel_spend)
+    .slice(0, 10);
+  const avgXCSAll = linkedFans.length
+    ? linkedFans.reduce((s, x) => s + x.total_cross_channel_spend, 0) / linkedFans.length : 0;
+
+  const decileLabels = top10.map(x =>
+    `${x.seat_section ? x.seat_section.split(' ')[0] : '—'} · ${x.home_state || '—'}`
+  );
+
+  CHARTS['t4-topDecile'] = new Chart(document.getElementById('t4-topDecile'), {
+    type: 'bar',
+    data: {
+      labels: decileLabels,
+      datasets: [
+        { label: 'Ticket Spend',  data: top10.map(x => x.ticket_spend || 0), backgroundColor: PALETTE.navy, borderRadius: 3 },
+        { label: 'F&B Spend',     data: top10.map(x => x.fnb_spend || 0),    backgroundColor: PALETTE.navyMid },
+      ],
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        annotation: {
+          annotations: {
+            avgLine: {
+              type: 'line', xMin: avgXCSAll, xMax: avgXCSAll,
+              borderColor: PALETTE.gray, borderWidth: 1, borderDash: [4, 4],
+              label: { content: `Avg ${fmt.currency(Math.round(avgXCSAll))}`, display: true, position: 'start', font: { size: 10 } },
+            },
+          },
+        },
+        tooltip: {
+          callbacks: {
+            afterBody: items => {
+              const fan = top10[items[0]?.dataIndex];
+              return fan ? [`Total: ${fmt.currency(fan.total_cross_channel_spend)}`] : [];
+            },
+          },
+        },
+      },
+      scales: {
+        x: { stacked: true, ticks: { callback: v => fmt.currency(v) } },
+        y: { stacked: true, grid: { display: false } },
+      },
+    },
+  });
+
+  // ── Chart 4: Single-Source vs. Linked Fans by Day Type ──
+  destroyChart('t4-linkedByDayType');
+  const dayTypes4  = ['day_game', 'weeknight', 'weekend_friday'];
+  const dayLabels4 = ['Day Game', 'Weeknight', 'Weekend & Friday Night'];
+  const linkedByDt   = dayTypes4.map((_, i) => fans4.filter((x, fi) => x.global_fan_id && (fi % 3) === i).length);
+  const unlinkedByDt = dayTypes4.map((_, i) => fans4.filter((x, fi) => !x.global_fan_id && (fi % 3) === i).length);
+
+  CHARTS['t4-linkedByDayType'] = new Chart(document.getElementById('t4-linkedByDayType'), {
+    type: 'bar',
+    data: {
+      labels: dayLabels4,
+      datasets: [
+        { label: 'Linked Fans',    data: linkedByDt,   backgroundColor: PALETTE.navy,     borderRadius: 3 },
+        { label: 'Single-Source',  data: unlinkedByDt, backgroundColor: PALETTE.gray2 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      scales: {
+        x: { stacked: true, grid: { display: false } },
+        y: { stacked: true },
+      },
+    },
+  });
+
+  // ── Chart 5: Geographic Distribution — Top 10 States (horizontal bar) ──
+  destroyChart('t4-geoBar');
+  const geoCount = {};
+  fans4.filter(x => x.global_fan_id).forEach(x => {
+    if (x.home_state) geoCount[x.home_state] = (geoCount[x.home_state] || 0) + 1;
+  });
+  const geoSorted = Object.entries(geoCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+  CHARTS['t4-geoBar'] = new Chart(document.getElementById('t4-geoBar'), {
+    type: 'bar',
+    data: {
+      labels: geoSorted.map(([s]) => s),
+      datasets: [{ label: 'Linked Fans', data: geoSorted.map(([, v]) => v),
+                   backgroundColor: PALETTE.navy, borderRadius: 4 }],
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { ticks: { callback: v => fmt.num(v) } }, y: { grid: { display: false } } },
+    },
+  });
+
+  // ── Chart 6: Linked Fan Distribution by State (D3 choropleth) ──
+  const stateDataMap = {};
+  fans4.filter(x => x.global_fan_id && x.home_state).forEach(x => {
+    if (!stateDataMap[x.home_state]) stateDataMap[x.home_state] = { count: 0 };
+    stateDataMap[x.home_state].count++;
+  });
+  renderStateMap('t4-map', stateDataMap, (abbr, name, d) => {
+    if (!d || !d.count) return `<strong>${name}</strong><br><span style="opacity:.7">No linked fans</span>`;
+    const pct = (d.count / linkedInView.length * 100).toFixed(1);
+    return `<strong>${name}</strong><br>${d.count} linked fans &nbsp;·&nbsp; ${pct}% of total`;
+  });
+}
