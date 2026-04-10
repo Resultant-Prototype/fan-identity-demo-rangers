@@ -13,6 +13,8 @@ jobs:
           fetch-depth: 0
 
       - name: Push to Resultant-Prototype mirror
+        env:
+          MIRROR_PAT: ${{ secrets.MIRROR_PAT }}
         run: |
-          git remote add mirror https://x-access-token:${{ secrets.MIRROR_PAT }}@github.com/Resultant-Prototype/fan-identity-demo-rangers.git
+          git remote add mirror https://bvinsonrez:${MIRROR_PAT}@github.com/Resultant-Prototype/fan-identity-demo-rangers.git
           git push mirror main --force
