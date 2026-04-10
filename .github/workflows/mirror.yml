@@ -16,5 +16,5 @@ jobs:
         env:
           MIRROR_PAT: ${{ secrets.MIRROR_PAT }}
         run: |
-          git remote add mirror https://bvinsonrez:${MIRROR_PAT}@github.com/Resultant-Prototype/fan-identity-demo-rangers.git
-          git push mirror main --force
+          git config --global --unset-all credential.helper || true
+          git push https://bvinsonrez:${MIRROR_PAT}@github.com/Resultant-Prototype/fan-identity-demo-rangers.git main --force
