@@ -191,3 +191,24 @@
       height: 8px;
       border-radius: 2px;
     }
+
+/* Global filter bar */
+#global-filter-bar {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--white); border-bottom: 1px solid var(--gray-200);
+  padding: 8px 24px;
+}
+/* Toggle switch */
+.toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: var(--gray-200); border-radius: 20px; transition: .2s;
+}
+.toggle-slider::before {
+  content: ''; position: absolute;
+  height: 14px; width: 14px; left: 3px; bottom: 3px;
+  background: white; border-radius: 50%; transition: .2s;
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--teal); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(16px); }

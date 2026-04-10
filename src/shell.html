@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fan Identity Resolution Demo — Belmont Racing Group</title>
+  <title>Fan Identity Resolution Demo — Texas Rangers Baseball Club</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-venn@4.3.0/build/index.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
@@ -14,16 +15,14 @@
 </head>
 <body>
   <header id="app-header">
-    <!-- LOGO SWAP ZONE — replace the src/text below to brand for a specific demo -->
-    <div id="logo-area" style="border:none; padding:0;">
-      <img src="Wordmark_1CR_White_750px.png" style="height:28px;">
+    <div id="logo-area">
+      <span style="font-size:11px;opacity:.7;">Texas Rangers</span>
     </div>
-    <!-- END LOGO SWAP ZONE -->
-    <span id="org-name">Belmont Racing Group</span>
+    <span id="org-name">Texas Rangers Baseball Club</span>
   </header>
 
   <nav id="tab-bar">
-    <button class="tab-btn active" data-tab="tab1">ADW Wagering</button>
+    <button class="tab-btn active" data-tab="tab1">Gate Access</button>
     <button class="tab-btn" data-tab="tab2">Ticket Sales</button>
     <button class="tab-btn" data-tab="tab3">Food &amp; Beverage</button>
     <button class="tab-btn" data-tab="tab4">
@@ -32,44 +31,54 @@
     </button>
   </nav>
 
+  <!-- Global filter bar: opponent + season avg toggle -->
+  <div id="global-filter-bar">
+    <div class="filter-group">
+      <span class="filter-label">Opponent</span>
+      <select class="filter-select" id="g-opponent">
+        <option value="all">All Opponents</option>
+        <!-- Populated by main.js from GAMES -->
+      </select>
+    </div>
+    <div class="filter-group" id="g-seasonAvg-group" style="display:none;">
+      <span class="filter-label">Season Avg</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="g-seasonAvg" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
   <main id="app-main">
 
-    <!-- TAB 1: ADW Wagering -->
+    <!-- TAB 1: Gate Access -->
     <section id="tab1" class="tab-panel active">
       <div class="filter-bar">
         <div class="filter-group">
-          <span class="filter-label">Venue</span>
-          <select class="filter-select" id="t1-venue">
-            <option value="all">All Venues</option>
-            <option value="Belmore Park">Belmore Park</option>
-            <option value="Saratoga Downs">Saratoga Downs</option>
-            <option value="Aqueduct Hills">Aqueduct Hills</option>
-          </select>
-        </div>
-        <div class="filter-group">
           <span class="filter-label">Date Range</span>
           <select class="filter-select" id="t1-dateRange">
-            <option value="last_30">Last 30 Days</option>
-            <option value="last_90">Last 90 Days</option>
-            <option value="current_season">Current Season (May–Oct)</option>
-            <option value="full_year" selected>Full Year</option>
+            <option value="full_season" selected>Full Season</option>
+            <option value="first_half">First Half (Apr–Jun)</option>
+            <option value="second_half">Second Half (Jul–Sep)</option>
+            <option value="last_30_games">Last 30 Games</option>
           </select>
         </div>
         <div class="filter-group">
-          <span class="filter-label">Channel</span>
-          <select class="filter-select" id="t1-channel">
-            <option value="all">All Channels</option>
-            <option value="mobile">Mobile</option>
-            <option value="web">Web</option>
+          <span class="filter-label">Day Type</span>
+          <select class="filter-select" id="t1-dayType">
+            <option value="all" selected>All Games</option>
+            <option value="day_game">Day Game</option>
+            <option value="weeknight">Weeknight</option>
+            <option value="weekend_friday">Weekend &amp; Friday Night</option>
           </select>
         </div>
         <div class="filter-group">
-          <span class="filter-label">Account Status</span>
-          <select class="filter-select" id="t1-accountStatus">
-            <option value="all">All Accounts</option>
-            <option value="active_30">Active (30-day)</option>
-            <option value="active_60">Active (60-day)</option>
-            <option value="active_90">Active (90-day)</option>
+          <span class="filter-label">Promo</span>
+          <select class="filter-select" id="t1-promo">
+            <option value="all" selected>All Games</option>
+            <option value="giveaway">Giveaway Night</option>
+            <option value="theme_night">Theme Night</option>
+            <option value="no_promo">No Promo</option>
           </select>
         </div>
         <button class="btn-reset" id="t1-reset">Reset Filters</button>
@@ -78,39 +87,40 @@
       <div class="ban-row" id="t1-bans"></div>
       <div class="chart-grid">
         <div class="chart-card">
-          <div class="chart-title">Handle by Day</div>
-          <div class="chart-container" style="height:220px"><canvas id="t1-handleByDay"></canvas></div>
+          <div class="chart-title">Attendance vs. Tickets Sold by Game</div>
+          <div class="chart-container" style="height:220px"><canvas id="t1-attendanceByGame"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Handle on Marquee Days vs. Benchmark Years</div>
-          <div class="chart-container" style="height:220px"><canvas id="t1-marqueeBar"></canvas></div>
+          <div class="chart-title">No-Show Rate by Game</div>
+          <div class="chart-container" style="height:220px"><canvas id="t1-noshowByGame"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Deposits vs. Withdrawals by Day</div>
-          <div class="chart-container" style="height:220px"><canvas id="t1-depWithDay"></canvas></div>
+          <div class="chart-title">Arrival Distribution</div>
+          <div class="chart-container" style="height:220px"><canvas id="t1-arrivalDist"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Mobile vs. Web Handle Split</div>
-          <div class="chart-container" style="height:200px"><canvas id="t1-channelDonut"></canvas></div>
+          <div class="chart-title">No-Show Rate by Ticket Type</div>
+          <div class="chart-container" style="height:200px"><canvas id="t1-noshowByType"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Handle by State — Top 10</div>
-          <div class="chart-container" style="height:200px"><canvas id="t1-handleByState"></canvas></div>
+          <div class="chart-title">Lone Star Member Scan Rate by Month</div>
+          <div class="chart-container" style="height:200px"><canvas id="t1-stmScanRate"></canvas></div>
         </div>
       </div>
-      <div class="chart-grid">
+      <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">ADW Bettor Distribution by State</div>
-          <div class="map-container" style="height:260px" id="t1-map"></div>
+          <div class="chart-title">Group Scan Distribution</div>
+          <div class="chart-container" style="height:200px"><canvas id="t1-groupScanDist"></canvas></div>
         </div>
+        <div class="chart-card"></div>
       </div>
       <div class="p3rl-teaser">
         <span class="p3rl-teaser-icon">🔒</span>
-        <span class="p3rl-teaser-text">Cross-channel fan value is not visible from ADW data alone. See <strong>Fan Identity</strong> tab.</span>
+        <span class="p3rl-teaser-text">Who are the fans behind each group scan? When one Lone Star Member scans 4 tickets, only the account holder is known. Identity resolution surfaces the rest through F&amp;B transaction matching. → <strong>Fan Identity</strong> tab</span>
       </div>
     </section>
 
@@ -118,37 +128,30 @@
     <section id="tab2" class="tab-panel">
       <div class="filter-bar">
         <div class="filter-group">
-          <span class="filter-label">Venue</span>
-          <select class="filter-select" id="t2-venue">
-            <option value="all">All Venues</option>
-            <option value="Belmore Park">Belmore Park</option>
-            <option value="Saratoga Downs">Saratoga Downs</option>
-            <option value="Aqueduct Hills">Aqueduct Hills</option>
-          </select>
-        </div>
-        <div class="filter-group">
           <span class="filter-label">Date Range</span>
           <select class="filter-select" id="t2-dateRange">
-            <option value="last_30">Last 30 Days</option>
-            <option value="last_90">Last 90 Days</option>
-            <option value="current_season">Current Season (May–Oct)</option>
-            <option value="full_year" selected>Full Year</option>
+            <option value="full_season" selected>Full Season</option>
+            <option value="first_half">First Half (Apr–Jun)</option>
+            <option value="second_half">Second Half (Jul–Sep)</option>
+            <option value="last_30_games">Last 30 Games</option>
           </select>
         </div>
         <div class="filter-group">
-          <span class="filter-label">Event Type</span>
-          <select class="filter-select" id="t2-eventType">
-            <option value="all">All Events</option>
-            <option value="marquee">Marquee</option>
-            <option value="regular">Regular Season</option>
+          <span class="filter-label">Day Type</span>
+          <select class="filter-select" id="t2-dayType">
+            <option value="all" selected>All Games</option>
+            <option value="day_game">Day Game</option>
+            <option value="weeknight">Weeknight</option>
+            <option value="weekend_friday">Weekend &amp; Friday Night</option>
           </select>
         </div>
         <div class="filter-group">
-          <span class="filter-label">Seat Category</span>
-          <select class="filter-select" id="t2-seatCategory">
-            <option value="all">All Categories</option>
-            <option value="premium">Premium</option>
-            <option value="general">General Admission</option>
+          <span class="filter-label">Ticket Type</span>
+          <select class="filter-select" id="t2-ticketType">
+            <option value="all" selected>All Types</option>
+            <option value="lone_star">Lone Star Member</option>
+            <option value="single_game">Single Game</option>
+            <option value="secondary">Secondary Market</option>
           </select>
         </div>
         <button class="btn-reset" id="t2-reset">Reset Filters</button>
@@ -157,33 +160,39 @@
       <div class="ban-row" id="t2-bans"></div>
       <div class="chart-grid">
         <div class="chart-card">
-          <div class="chart-title">Ticket Purchases Over Time</div>
-          <div class="chart-container" style="height:220px"><canvas id="t2-tktOverTime"></canvas></div>
+          <div class="chart-title">Tickets Sold by Game</div>
+          <div class="chart-container" style="height:220px"><canvas id="t2-soldByGame"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Tickets Sold by Event</div>
-          <div class="chart-container" style="height:240px"><canvas id="t2-soldByEvent"></canvas></div>
+          <div class="chart-title">Revenue by Ticket Type</div>
+          <div class="chart-container" style="height:240px"><canvas id="t2-revByType"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Revenue by Event and Seat Category</div>
-          <div class="chart-container" style="height:240px"><canvas id="t2-revByEventSeat"></canvas></div>
+          <div class="chart-title">Avg Ticket Value by Opponent</div>
+          <div class="chart-container" style="height:240px"><canvas id="t2-avgValueByOpponent"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Historical Marquee Event Performance</div>
-          <div class="chart-container" style="height:220px"><canvas id="t2-historicalMarquee"></canvas></div>
+          <div class="chart-title">Secondary Market Share by Game Tier</div>
+          <div class="chart-container" style="height:220px"><canvas id="t2-secondaryByTier"></canvas></div>
         </div>
+        <div class="chart-card">
+          <div class="chart-title">Purchase Timing — Days in Advance</div>
+          <div class="chart-container" style="height:220px"><canvas id="t2-purchaseTiming"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-grid">
         <div class="chart-card">
           <div class="chart-title">Buyers by State — Top 10</div>
-          <div class="chart-container" style="height:220px"><canvas id="t2-buyersByState"></canvas></div>
+          <div class="chart-container" style="height:200px"><canvas id="t2-buyersByState"></canvas></div>
         </div>
       </div>
       <div class="p3rl-teaser">
         <span class="p3rl-teaser-icon">🔒</span>
-        <span class="p3rl-teaser-text">Cross-channel fan value is not visible from ticketing data alone. See <strong>Fan Identity</strong> tab.</span>
+        <span class="p3rl-teaser-text">Secondary market buyers are invisible to the Rangers CRM — Ticketmaster has no record of who actually holds the ticket. <strong>Fan Identity</strong> surfaces them through F&amp;B transaction matching.</span>
       </div>
     </section>
 
@@ -191,38 +200,30 @@
     <section id="tab3" class="tab-panel">
       <div class="filter-bar">
         <div class="filter-group">
-          <span class="filter-label">Venue</span>
-          <select class="filter-select" id="t3-venue">
-            <option value="all">All Venues</option>
-            <option value="Belmore Park">Belmore Park</option>
-            <option value="Saratoga Downs">Saratoga Downs</option>
-            <option value="Aqueduct Hills">Aqueduct Hills</option>
+          <span class="filter-label">Date Range</span>
+          <select class="filter-select" id="t3-dateRange">
+            <option value="full_season" selected>Full Season</option>
+            <option value="first_half">First Half (Apr–Jun)</option>
+            <option value="second_half">Second Half (Jul–Sep)</option>
+            <option value="last_30_games">Last 30 Games</option>
           </select>
         </div>
         <div class="filter-group">
-          <span class="filter-label">Date Range</span>
-          <select class="filter-select" id="t3-dateRange">
-            <option value="last_30">Last 30 Days</option>
-            <option value="last_90">Last 90 Days</option>
-            <option value="current_season">Current Season (May–Oct)</option>
-            <option value="full_year" selected>Full Year</option>
+          <span class="filter-label">Day Type</span>
+          <select class="filter-select" id="t3-dayType">
+            <option value="all" selected>All Games</option>
+            <option value="day_game">Day Game</option>
+            <option value="weeknight">Weeknight</option>
+            <option value="weekend_friday">Weekend &amp; Friday Night</option>
           </select>
         </div>
         <div class="filter-group">
           <span class="filter-label">F&amp;B Category</span>
           <select class="filter-select" id="t3-fnbCategory">
-            <option value="all">All Categories</option>
+            <option value="all" selected>All Categories</option>
             <option value="food">Food</option>
             <option value="beer_wine">Beer &amp; Wine</option>
             <option value="non_alc">Non-Alcoholic</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">Visit Type</span>
-          <select class="filter-select" id="t3-visitType">
-            <option value="all">All Visits</option>
-            <option value="marquee">Marquee Event</option>
-            <option value="regular">Regular Day</option>
           </select>
         </div>
         <button class="btn-reset" id="t3-reset">Reset Filters</button>
@@ -231,28 +232,28 @@
       <div class="ban-row" id="t3-bans"></div>
       <div class="chart-grid">
         <div class="chart-card">
-          <div class="chart-title">F&amp;B Revenue by Day</div>
-          <div class="chart-container" style="height:220px"><canvas id="t3-revByDay"></canvas></div>
+          <div class="chart-title">F&amp;B Revenue by Game</div>
+          <div class="chart-container" style="height:220px"><canvas id="t3-revByGame"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Per-Cap Spend by Venue</div>
-          <div class="chart-container" style="height:220px"><canvas id="t3-perCapVenue"></canvas></div>
+          <div class="chart-title">Per-Cap Spend by Day Type</div>
+          <div class="chart-container" style="height:220px"><canvas id="t3-perCapByDayType"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Revenue by Category</div>
-          <div class="chart-container" style="height:220px"><canvas id="t3-revByCategory"></canvas></div>
+          <div class="chart-title">Revenue by Category over Season</div>
+          <div class="chart-container" style="height:220px"><canvas id="t3-revByCatMonth"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">F&amp;B Attach Rate by Event</div>
-          <div class="chart-container" style="height:220px"><canvas id="t3-attachByEvent"></canvas></div>
+          <div class="chart-title">F&amp;B Attach Rate by Opponent</div>
+          <div class="chart-container" style="height:220px"><canvas id="t3-attachByOpponent"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Per-Cap Spend by Seat Category</div>
-          <div class="chart-container" style="height:220px"><canvas id="t3-perCapSeat"></canvas></div>
+          <div class="chart-title">Per-Cap Spend by Seating Area</div>
+          <div class="chart-container" style="height:220px"><canvas id="t3-perCapBySection"></canvas></div>
         </div>
       </div>
       <div class="p3rl-teaser">
@@ -266,41 +267,31 @@
       <div id="match-banner">
         <div>
           <div class="match-banner-headline">
-            <span>94,200 fans linked</span> across ADW, Ticketing, and F&amp;B
+            <span>362 fans linked</span> across Ticketmaster, Gate Scans, and F&amp;B
           </div>
         </div>
         <div class="match-stats">
           <div class="match-stat"><strong>Match confidence:</strong> 91%</div>
-          <div class="match-stat"><strong>ADW-only:</strong> 12,400</div>
-          <div class="match-stat"><strong>Ticket-only:</strong> 8,100</div>
-          <div class="match-stat"><strong>F&amp;B-only:</strong> 6,300</div>
+          <div class="match-stat"><strong>Ticket-only:</strong> 68</div>
+          <div class="match-stat"><strong>Scan-only:</strong> 40</div>
+          <div class="match-stat"><strong>F&amp;B-only:</strong> 30</div>
         </div>
       </div>
-
       <div class="filter-bar">
-        <div class="filter-group">
-          <span class="filter-label">Venue</span>
-          <select class="filter-select" id="t4-venue">
-            <option value="all">All Venues</option>
-            <option value="Belmore Park">Belmore Park</option>
-            <option value="Saratoga Downs">Saratoga Downs</option>
-            <option value="Aqueduct Hills">Aqueduct Hills</option>
-          </select>
-        </div>
         <div class="filter-group">
           <span class="filter-label">Date Range</span>
           <select class="filter-select" id="t4-dateRange">
-            <option value="last_30">Last 30 Days</option>
-            <option value="last_90">Last 90 Days</option>
-            <option value="current_season">Current Season (May–Oct)</option>
-            <option value="full_year" selected>Full Year</option>
+            <option value="full_season" selected>Full Season</option>
+            <option value="first_half">First Half (Apr–Jun)</option>
+            <option value="second_half">Second Half (Jul–Sep)</option>
+            <option value="last_30_games">Last 30 Games</option>
           </select>
         </div>
         <div class="filter-group">
           <span class="filter-label">Customer Segment</span>
           <select class="filter-select" id="t4-segment">
-            <option value="all_linked">All Linked Fans</option>
-            <option value="top10pct">Top 10% by Cross-Channel Spend</option>
+            <option value="all_linked" selected>All Linked Fans</option>
+            <option value="top10pct">Top 10% by Spend</option>
             <option value="single_source">Single-Source Only</option>
           </select>
         </div>
@@ -314,36 +305,34 @@
         <button class="btn-reset" id="t4-reset">Reset Filters</button>
         <button class="btn-export" id="t4-export">Export to CSV</button>
       </div>
-
       <div class="ban-row" id="t4-bans"></div>
-
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Fan Population Overlap (ADW · Ticketing · F&amp;B)</div>
-          <div class="chart-container" style="height:340px"><canvas id="t4-venn"></canvas></div>
+          <div class="chart-title">Fan Population Overlap</div>
+          <div class="chart-container" style="height:260px"><canvas id="t4-venn"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">VIP Tier vs. Cross-Channel Spend</div>
-          <div class="chart-container" style="height:340px"><canvas id="t4-vipScatter"></canvas></div>
+          <div class="chart-title">Membership Tier vs. Cross-Channel Spend</div>
+          <div class="chart-container" style="height:260px"><canvas id="t4-spendByTier"></canvas></div>
         </div>
       </div>
-
-      <div class="chart-grid chart-grid-2">
+      <div class="chart-grid">
         <div class="chart-card">
           <div class="chart-title">Top Decile Fans — Cross-Channel Spend Breakdown</div>
-          <div class="chart-container" style="height:280px"><canvas id="t4-topDecile"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <div class="chart-title">Single-Source vs. Linked Fans by Venue</div>
-          <div class="chart-container" style="height:280px"><canvas id="t4-linkageByVenue"></canvas></div>
+          <div class="chart-container" style="height:260px"><canvas id="t4-topDecile"></canvas></div>
         </div>
       </div>
-
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Geographic Distribution of Linked Fans — Top 10 States</div>
-          <div class="chart-container" style="height:220px"><canvas id="t4-geoLinked"></canvas></div>
+          <div class="chart-title">Single-Source vs. Linked Fans by Day Type</div>
+          <div class="chart-container" style="height:220px"><canvas id="t4-linkedByDayType"></canvas></div>
         </div>
+        <div class="chart-card">
+          <div class="chart-title">Geographic Distribution — Top 10 States</div>
+          <div class="chart-container" style="height:220px"><canvas id="t4-geoBar"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-grid">
         <div class="chart-card">
           <div class="chart-title">Linked Fan Distribution by State</div>
           <div class="map-container" style="height:260px" id="t4-map"></div>
@@ -352,7 +341,6 @@
     </section>
 
   </main>
-
   <script>{{SCRIPT}}</script>
 </body>
 </html>
