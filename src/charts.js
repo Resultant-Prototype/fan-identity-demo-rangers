@@ -366,3 +366,212 @@ function renderTab1() {
     },
   });
 }
+
+// ═══════════════════════════════════════════════
+// TAB 2: TICKET SALES
+// ═══════════════════════════════════════════════
+function renderTab2() {
+  const f = STATE.tab2;
+  const { mode, focused, baseline } = filterGames(f);
+
+  const fIds     = focused.map(g => g.id);
+  const fTickets = getTicketRows(fIds);
+  const fScans   = getScanRows(fIds);
+  const fans2    = filterFans(f, 'tab2');
+
+  // ── BANs ──
+  const totalSold   = fTickets.reduce((s, r) => s + r.tickets_sold_total, 0);
+  const totalRev    = fTickets.reduce((s, r) => s + r.gross_revenue, 0);
+  const avgTktVal   = totalSold > 0 ? totalRev / totalSold : 0;
+  const secShare    = fTickets.length ? fTickets.reduce((s, r) => s + r.secondary_market_share, 0) / fTickets.length : 0;
+  const stmScanRate = fScans.length ? fScans.reduce((s, r) => s + (1 - r.stm_no_show_rate), 0) / fScans.length : 0;
+  const stateCount  = {};
+  fans2.forEach(f2 => { if (f2.ticket_state) stateCount[f2.ticket_state] = (stateCount[f2.ticket_state] || 0) + 1; });
+  const topState = Object.entries(stateCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'TX';
+
+  renderBANs('t2-bans', [
+    { label: 'Tickets Sold',               value: fmt.num(totalSold) },
+    { label: 'Gross Revenue',              value: fmt.currency(totalRev) },
+    { label: 'Avg Ticket Value',           value: '$' + Math.round(avgTktVal) },
+    { label: 'Secondary Market Share',     value: fmt.pct(secShare) },
+    { label: 'Lone Star Member Scan Rate', value: fmt.pct(stmScanRate) },
+    { label: 'Top State',                  value: topState, lead: true },
+  ]);
+
+  const sortedGames2 = [...focused].sort((a, b) => a.date.localeCompare(b.date));
+
+  // ── Chart 1: Tickets Sold by Game (line) ──
+  destroyChart('t2-soldByGame');
+  const soldByGame  = sortedGames2.map(g => { const t = fTickets.find(r => r.game_id === g.id); return t ? t.tickets_sold_total : 0; });
+  const datasets21  = [{ label: 'Tickets Sold', data: soldByGame, borderColor: PALETTE.navy,
+                          backgroundColor: 'rgba(0,50,120,0.07)', fill: true, pointRadius: 0, borderWidth: 2, tension: 0.2 }];
+  if (mode === 'focused' && STATE.showSeasonAvg) {
+    const bIds2 = (baseline || []).map(g => g.id);
+    const bTickets = getTicketRows(bIds2);
+    const bAvg = bTickets.length ? bTickets.reduce((s, r) => s + r.tickets_sold_total, 0) / bTickets.length : 0;
+    datasets21.push({ label: 'Season Avg', data: sortedGames2.map(() => bAvg),
+                      borderColor: PALETTE.grayDim, borderDash: [4, 4], pointRadius: 0, borderWidth: 1, fill: false });
+  }
+
+  CHARTS['t2-soldByGame'] = new Chart(document.getElementById('t2-soldByGame'), {
+    type: 'line',
+    data: { labels: sortedGames2.map(g => g.date.slice(5)), datasets: datasets21 },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            title: items => { const g = sortedGames2[items[0]?.dataIndex]; return g ? `${g.date} vs. ${g.opponent}` : ''; },
+            afterBody: items => {
+              const i = items[0]?.dataIndex;
+              const t = fTickets.find(r => r.game_id === sortedGames2[i]?.id);
+              return t ? [`STM: ${fmt.num(t.stm_tickets)}  Single: ${fmt.num(t.single_tickets)}  Secondary: ${fmt.num(t.secondary_tickets)}`] : [];
+            },
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 12 }, grid: { display: false } },
+        y: { ticks: { callback: v => fmt.num(v) } },
+      },
+    },
+  });
+
+  // ── Chart 2: Revenue by Ticket Type (stacked bar by game) ──
+  destroyChart('t2-revByType');
+  CHARTS['t2-revByType'] = new Chart(document.getElementById('t2-revByType'), {
+    type: 'bar',
+    data: {
+      labels: sortedGames2.map(g => g.date.slice(5)),
+      datasets: [
+        { label: 'Lone Star Member', data: sortedGames2.map(g => { const t = fTickets.find(r => r.game_id === g.id); return t ? t.stm_revenue : 0; }), backgroundColor: PALETTE.navy, borderRadius: 2 },
+        { label: 'Single Game',      data: sortedGames2.map(g => { const t = fTickets.find(r => r.game_id === g.id); return t ? t.single_revenue : 0; }), backgroundColor: PALETTE.navyMid },
+        { label: 'Secondary Market', data: sortedGames2.map(g => { const t = fTickets.find(r => r.game_id === g.id); return t ? t.secondary_revenue : 0; }), backgroundColor: PALETTE.navySoft },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            title: items => { const g = sortedGames2[items[0]?.dataIndex]; return g ? `${g.date} vs. ${g.opponent}` : ''; },
+            footer: () => ['Secondary market revenue is estimated from scan matching — Rangers do not capture this directly'],
+          },
+        },
+      },
+      scales: {
+        x: { stacked: true, ticks: { maxTicksLimit: 12 }, grid: { display: false } },
+        y: { stacked: true, ticks: { callback: v => fmt.currency(v) } },
+      },
+    },
+  });
+
+  // ── Chart 3: Avg Ticket Value by Opponent (horizontal bar, all opponents) ──
+  destroyChart('t2-avgValueByOpponent');
+  const oppMap = {};
+  GAME_TICKETS.forEach(t => {
+    const g = GAME_BY_ID[t.game_id];
+    if (!g) return;
+    if (!oppMap[g.opponent]) oppMap[g.opponent] = { total: 0, count: 0 };
+    oppMap[g.opponent].total += t.avg_ticket_value;
+    oppMap[g.opponent].count++;
+  });
+  const oppSorted = Object.entries(oppMap)
+    .map(([opp, d]) => ({ opp, avg: Math.round(d.total / d.count) }))
+    .sort((a, b) => b.avg - a.avg);
+
+  CHARTS['t2-avgValueByOpponent'] = new Chart(document.getElementById('t2-avgValueByOpponent'), {
+    type: 'bar',
+    data: {
+      labels: oppSorted.map(d => d.opp),
+      datasets: [{
+        label: 'Avg Ticket Value',
+        data: oppSorted.map(d => d.avg),
+        backgroundColor: oppSorted.map(d => d.opp === STATE.opponent ? PALETTE.redSoft : PALETTE.navy),
+        borderRadius: 3,
+      }],
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '$' + ctx.raw } } },
+      scales: { x: { ticks: { callback: v => '$' + v } }, y: { ticks: { font: { size: 11 } }, grid: { display: false } } },
+    },
+  });
+
+  // ── Chart 4: Secondary Market Share by Game Tier (grouped bar) ──
+  destroyChart('t2-secondaryByTier');
+  const tiers = ['featured', 'select', 'standard'];
+  const tierLabels = ['Featured', 'Select', 'Standard'];
+  const tierSecShare = tiers.map(tier => {
+    const rows = GAME_TICKETS.filter(t => GAME_BY_ID[t.game_id]?.game_tier === tier);
+    return rows.length ? rows.reduce((s, r) => s + r.secondary_market_share, 0) / rows.length : 0;
+  });
+
+  CHARTS['t2-secondaryByTier'] = new Chart(document.getElementById('t2-secondaryByTier'), {
+    type: 'bar',
+    data: {
+      labels: tierLabels,
+      datasets: [{ label: 'Secondary Market Share', data: tierSecShare,
+                   backgroundColor: [PALETTE.navy, PALETTE.navyMid, PALETTE.navySoft], borderRadius: 4 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt.pct(ctx.raw) } } },
+      scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => fmt.pct(v) } } },
+    },
+  });
+
+  // ── Chart 5: Purchase Timing — Days in Advance by Ticket Type (grouped bar) ──
+  destroyChart('t2-purchaseTiming');
+  const timingBuckets = ['0–3 days', '4–7 days', '8–14 days', '15–30 days', '30+ days'];
+  const timingDist = (type) => {
+    const rows = GAME_TICKETS;
+    const avg = rows.reduce((s, r) => {
+      if (type === 'lone_star') return s + 90;
+      if (type === 'single_game') return s + r.avg_days_in_advance;
+      return s + Math.max(1, r.avg_days_in_advance * 0.3);
+    }, 0) / rows.length;
+    const center = Math.min(4, Math.max(0, Math.round(avg / 10)));
+    return timingBuckets.map((_, i) => {
+      const dist = Math.exp(-0.5 * Math.pow(i - center, 2) / 1.5);
+      return parseFloat(dist.toFixed(3));
+    });
+  };
+
+  CHARTS['t2-purchaseTiming'] = new Chart(document.getElementById('t2-purchaseTiming'), {
+    type: 'bar',
+    data: {
+      labels: timingBuckets,
+      datasets: [
+        { label: 'Lone Star Member', data: timingDist('lone_star'),   backgroundColor: PALETTE.navy,     borderRadius: 3 },
+        { label: 'Single Game',      data: timingDist('single_game'), backgroundColor: PALETTE.navyMid,  borderRadius: 3 },
+        { label: 'Secondary Market', data: timingDist('secondary'),   backgroundColor: PALETTE.navySoft, borderRadius: 3 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => (v * 100).toFixed(0) + '%' } } },
+    },
+  });
+
+  // ── Chart 6: Buyers by State — Top 10 (horizontal bar) ──
+  destroyChart('t2-buyersByState');
+  const stateSorted = Object.entries(stateCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+  CHARTS['t2-buyersByState'] = new Chart(document.getElementById('t2-buyersByState'), {
+    type: 'bar',
+    data: {
+      labels: stateSorted.map(([s]) => s),
+      datasets: [{ label: 'Buyers', data: stateSorted.map(([, v]) => v),
+                   backgroundColor: PALETTE.navy, borderRadius: 4 }],
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { ticks: { callback: v => fmt.num(v) } }, y: { grid: { display: false } } },
+    },
+  });
+}
