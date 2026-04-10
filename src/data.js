@@ -168,6 +168,28 @@ function generateGameTickets() {
 const GAME_TICKETS = generateGameTickets();
 console.assert(GAME_TICKETS.length === 81, 'GAME_TICKETS row count');
 
+// ── Seasonal arrival shifts by month (index 0–11) ──────────────
+// Deltas applied to base fractions [90+, 60-90, 30-60, 0-30]
+// Texas heat drives late arrivals Jul–Aug; Opening Day / Sep drives early
+const ARR_SEASONAL = [
+  [ 0.00, 0.00, 0.00, 0.00],  // Jan (unused)
+  [ 0.00, 0.00, 0.00, 0.00],  // Feb (unused)
+  [ 0.07, 0.04,-0.04,-0.05],  // Mar — Opening Day/early spring, fans arrive very early
+  [ 0.04, 0.02,-0.02,-0.03],  // Apr — still excited, early arrivals elevated
+  [ 0.00, 0.00, 0.00, 0.00],  // May — baseline
+  [-0.01, 0.00, 0.01, 0.01],  // Jun — warming up, slight late shift
+  [-0.05,-0.03, 0.04, 0.04],  // Jul — Texas heat, fans delay arrival meaningfully
+  [-0.06,-0.04, 0.05, 0.04],  // Aug — hottest month, peak late arrival pattern
+  [ 0.02, 0.01,-0.01,-0.02],  // Sep — cooler weather + meaningful games, fans arrive early
+  [ 0.00, 0.00, 0.00, 0.00],  // Oct (unused)
+  [ 0.00, 0.00, 0.00, 0.00],  // Nov (unused)
+  [ 0.00, 0.00, 0.00, 0.00],  // Dec (unused)
+];
+
+// STM no-show rate base by month — real STMs skip summer road trips + Texas heat
+// Monthly scan rate = 1 - STM_NS_MONTHLY[m] ± small game-level jitter
+const STM_NS_MONTHLY = [0, 0, 0.018, 0.020, 0.026, 0.038, 0.060, 0.072, 0.044, 0, 0, 0];
+
 // ── GAME_SCANS ──────────────────────────────────
 function generateGameScans() {
   return GAMES.map((g, i) => {
@@ -177,12 +199,13 @@ function generateGameScans() {
     const tickets_scanned = Math.round(tkt.tickets_sold_total * (1 - no_show_rate));
     const no_show_count   = tkt.tickets_sold_total - tickets_scanned;
 
-    // Arrival distribution sums to 1.0
-    const a90p = 0.09  + deterministicVariance(g.id, 11) * 0.04 - 0.02;
-    const a60  = 0.17  + deterministicVariance(g.id, 12) * 0.04 - 0.02;
-    const a30  = 0.30  + deterministicVariance(g.id, 13) * 0.04 - 0.02;
-    const a0   = 0.28  + deterministicVariance(g.id, 14) * 0.04 - 0.02;
-    const aPost = Math.max(0.03, parseFloat((1 - a90p - a60 - a30 - a0).toFixed(3)));
+    // Arrival distribution with seasonal shifts — sums to 1.0
+    const shift = ARR_SEASONAL[g.month] || [0, 0, 0, 0];
+    const a90p = Math.max(0.02, 0.09 + shift[0] + deterministicVariance(g.id, 11) * 0.04 - 0.02);
+    const a60  = Math.max(0.05, 0.17 + shift[1] + deterministicVariance(g.id, 12) * 0.04 - 0.02);
+    const a30  = Math.max(0.10, 0.30 + shift[2] + deterministicVariance(g.id, 13) * 0.04 - 0.02);
+    const a0   = Math.max(0.10, 0.28 + shift[3] + deterministicVariance(g.id, 14) * 0.04 - 0.02);
+    const aPost = Math.max(0.02, parseFloat((1 - a90p - a60 - a30 - a0).toFixed(3)));
 
     return {
       game_id:            g.id,
@@ -190,7 +213,7 @@ function generateGameScans() {
       tickets_scanned,
       no_show_count,
       no_show_rate:       parseFloat(no_show_rate.toFixed(3)),
-      stm_no_show_rate:   parseFloat((0.015 + deterministicVariance(g.id, 15) * 0.008).toFixed(3)),
+      stm_no_show_rate:   parseFloat(Math.max(0.01, STM_NS_MONTHLY[g.month] + deterministicVariance(g.id, 15) * 0.015 - 0.005).toFixed(3)),
       single_no_show_rate: parseFloat((0.065 + deterministicVariance(g.id, 16) * 0.020).toFixed(3)),
       secondary_no_show_rate: parseFloat((0.130 + deterministicVariance(g.id, 17) * 0.030).toFixed(3)),
       arr_90plus:         parseFloat(a90p.toFixed(3)),
@@ -281,15 +304,15 @@ const FNB_CATS     = ['food','beer_wine','non_alc'];
 const TICKET_TYPES = ['lone_star','single_game','secondary'];
 const TKT_WEIGHTS  = [55, 30, 15];
 
-// 7 segments — total 500, linked = 160+95+65+42 = 362
+// 7 segments — total 3,000, linked = 960+570+390+252 = 2,172
 const SEGMENTS = [
-  { count:160, sources:['TICKET','SCAN','FNB'], linked:true  },
-  { count: 95, sources:['TICKET','SCAN'],       linked:true  },
-  { count: 65, sources:['TICKET','FNB'],        linked:true  },
-  { count: 42, sources:['SCAN','FNB'],          linked:true  },  // Dark fans — P3RL punchline
-  { count: 68, sources:['TICKET'],              linked:false },
-  { count: 40, sources:['SCAN'],                linked:false },
-  { count: 30, sources:['FNB'],                 linked:false },
+  { count: 960, sources:['TICKET','SCAN','FNB'], linked:true  },
+  { count: 570, sources:['TICKET','SCAN'],       linked:true  },
+  { count: 390, sources:['TICKET','FNB'],        linked:true  },
+  { count: 252, sources:['SCAN','FNB'],          linked:true  },  // Dark fans — P3RL punchline
+  { count: 408, sources:['TICKET'],              linked:false },
+  { count: 240, sources:['SCAN'],                linked:false },
+  { count: 180, sources:['FNB'],                 linked:false },
 ];
 
 function generateFans() {
@@ -366,11 +389,11 @@ function generateFans() {
 
 const FANS = generateFans();
 
-console.assert(FANS.length === 500, 'FANS should have 500 records');
-console.assert(FANS.filter(f => f.global_fan_id).length === 362, `Linked fans: expected 362, got ${FANS.filter(f=>f.global_fan_id).length}`);
+console.assert(FANS.length === 3000, 'FANS should have 3,000 records');
+console.assert(FANS.filter(f => f.global_fan_id).length === 2172, `Linked fans: expected 2172, got ${FANS.filter(f=>f.global_fan_id).length}`);
 const darkFans = FANS.filter(f => f.linked_sources === 'SCAN|FNB');
-console.assert(darkFans.length === 42, `Dark fans (SCAN+FNB only): expected 42, got ${darkFans.length}`);
-console.log(`FANS OK — 500 total, ${FANS.filter(f=>f.global_fan_id).length} linked, ${darkFans.length} dark fans`);
+console.assert(darkFans.length === 252, `Dark fans (SCAN+FNB only): expected 252, got ${darkFans.length}`);
+console.log(`FANS OK — 3,000 total, ${FANS.filter(f=>f.global_fan_id).length} linked, ${darkFans.length} dark fans`);
 
 function getTop10PctThreshold() {
   const linked = FANS.filter(f => f.global_fan_id);
