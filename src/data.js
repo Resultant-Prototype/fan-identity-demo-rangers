@@ -251,6 +251,28 @@ console.log('GAME DATA OK — FnB season total $' + (totalFnBRev / 1e6).toFixed(
 // ── Fan Records — 500 fans across 3 source systems ──────────────
 // Ticketmaster (TICKET) · MLB Ballpark App / Gate Scan (SCAN) · Delaware North F&B (FNB)
 
+// ── Upcoming Game Pacing — standalone snapshot for Ticket Pacing chart ──────
+// Purpose-built dataset; not derived from GAME_TICKETS.
+// Reference date: 2025-07-14.  target = days>=17→78%, days>=4→70%, days<4→88%
+const UPCOMING_PACING = [
+  // Mariners series (Jul 18–20) — days 4–6, target 70%
+  { opponent:'Seattle Mariners',  date:'2025-07-18', daysUntil:4,  pctSold:74 }, // +4  green
+  { opponent:'Seattle Mariners',  date:'2025-07-19', daysUntil:5,  pctSold:64 }, // -6  amber
+  { opponent:'Seattle Mariners',  date:'2025-07-20', daysUntil:6,  pctSold:55 }, // -15 red
+  // Mets series (Jul 25–27) — days 11–13, target 70%
+  { opponent:'New York Mets',     date:'2025-07-25', daysUntil:11, pctSold:79 }, // +9  green
+  { opponent:'New York Mets',     date:'2025-07-26', daysUntil:12, pctSold:66 }, // -4  amber
+  { opponent:'New York Mets',     date:'2025-07-27', daysUntil:13, pctSold:57 }, // -13 red
+  // Yankees series (Aug 1–4) — days 18–21, target 78%
+  { opponent:'New York Yankees',  date:'2025-08-01', daysUntil:18, pctSold:91 }, // +13 green
+  { opponent:'New York Yankees',  date:'2025-08-02', daysUntil:19, pctSold:82 }, // +4  green
+  { opponent:'New York Yankees',  date:'2025-08-03', daysUntil:20, pctSold:72 }, // -6  amber
+  { opponent:'New York Yankees',  date:'2025-08-04', daysUntil:21, pctSold:64 }, // -14 red
+  // Athletics series (Aug 11–12) — days 28–29, target 78%
+  { opponent:'Oakland Athletics', date:'2025-08-11', daysUntil:28, pctSold:83 }, // +5  green
+  { opponent:'Oakland Athletics', date:'2025-08-12', daysUntil:29, pctSold:47 }, // -31 red ← alarm
+];
+
 const US_STATES    = ['TX','OK','LA','CO','NM','CA','NY','FL','GA','IL','TN','AR','MO','KS','AZ'];
 const STATE_WEIGHTS= [260,  22,  14,  10,   8,   7,   5,   5,   4,   4,   3,   3,   3,   3,   3];
 const SEAT_SECTIONS= ['Lexus Club','Balcones Speakeasy','Field Level','Main Level','Upper Level','Outfield'];

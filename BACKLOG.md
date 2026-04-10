@@ -18,7 +18,11 @@
 
 ~~- **Logo sizing on narrow viewports**~~ ✓ Fixed — `#logo-area img` capped at `max-width: 120px`.
 
-- **Purchase Timing: Daniel's pacing benchmarks as annotation lines** — Daniel Goldberg (Rangers analytics) has a live at-risk dashboard keyed to days-out thresholds: 78% of ticket budget sold by day 17, 70% single-game by day 4, 13% sold day-of. Add vertical annotation lines at days 17, 4, and 1 to the `t2-purchaseTiming` histogram using `chartjs-plugin-annotation`, labeled with these targets. Potentially add a second y-axis or cumulative line showing pacing-to-date. This makes the chart legible in the same vocabulary Daniel's leadership already uses.
+- **Informational ⓘ tooltips on all chart titles** — each chart card should have a small ⓘ icon in the title area that shows an explanatory tooltip on hover. Currently only Tab 4 BANs have tooltips. The `[data-tooltip]` CSS pattern is already in `style.css` — this is a charts.js + shell.html wiring task, adding tooltip text per chart. Port approach from Belmont build.
+
+- **Top Decile: total value label at bar end** — the fan's total cross-channel spend is surfaced in the hover tooltip (`afterBody`) but not visible on the chart itself. Add a datalabels-style label at the right end of each stacked bar showing the total `$X,XXX`. Either via a third transparent dataset with Chart.js datalabels plugin, or a custom `afterDraw` plugin. Makes the ranking self-explanatory without hover. Affects: `src/charts.js` (t4-topDecile options).
+
+~~- **Purchase Timing: Daniel's pacing benchmarks as annotation lines**~~ ✓ Fixed — light red zone on `0–3 days` ("~13% day-of"), dashed benchmark lines at `4–7 days` ("Day 4 — 70% SG target") and `15–30 days` ("Day 17 — 78% budget"). ⓘ tooltip added to chart title with benchmark context.
 
 ## Feature Ideas
 

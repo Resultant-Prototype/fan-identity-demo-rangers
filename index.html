@@ -372,6 +372,12 @@
         <button class="btn-export" id="t2-export">Export to CSV</button>
       </div>
       <div class="ban-row" id="t2-bans"></div>
+      <div class="chart-grid" style="margin-bottom:24px">
+        <div class="chart-card">
+          <div class="chart-title">Ticket Pacing — Upcoming Games vs. Target <span class="chart-info-icon" data-tooltip="Next 12 games from mid-season reference (Jul 14, 2025).&#10;Color: green = on/above target · amber = within 10 pts · red = at risk.&#10;Dashed lines show pacing benchmarks:&#10;  Amber (70%) — Day 4 single-game floor&#10;  Green (78%) — Day 17 total budget target&#10;Hover a bar for exact gap and status.">ⓘ</span></div>
+          <div class="chart-container" style="height:320px"><canvas id="t2-ticketPacing"></canvas></div>
+        </div>
+      </div>
       <div class="chart-grid">
         <div class="chart-card">
           <div class="chart-title">Tickets Sold by Game</div>
@@ -808,6 +814,28 @@ console.log('GAME DATA OK — FnB season total $' + (totalFnBRev / 1e6).toFixed(
 
 // ── Fan Records — 500 fans across 3 source systems ──────────────
 // Ticketmaster (TICKET) · MLB Ballpark App / Gate Scan (SCAN) · Delaware North F&B (FNB)
+
+// ── Upcoming Game Pacing — standalone snapshot for Ticket Pacing chart ──────
+// Purpose-built dataset; not derived from GAME_TICKETS.
+// Reference date: 2025-07-14.  target = days>=17→78%, days>=4→70%, days<4→88%
+const UPCOMING_PACING = [
+  // Mariners series (Jul 18–20) — days 4–6, target 70%
+  { opponent:'Seattle Mariners',  date:'2025-07-18', daysUntil:4,  pctSold:74 }, // +4  green
+  { opponent:'Seattle Mariners',  date:'2025-07-19', daysUntil:5,  pctSold:64 }, // -6  amber
+  { opponent:'Seattle Mariners',  date:'2025-07-20', daysUntil:6,  pctSold:55 }, // -15 red
+  // Mets series (Jul 25–27) — days 11–13, target 70%
+  { opponent:'New York Mets',     date:'2025-07-25', daysUntil:11, pctSold:79 }, // +9  green
+  { opponent:'New York Mets',     date:'2025-07-26', daysUntil:12, pctSold:66 }, // -4  amber
+  { opponent:'New York Mets',     date:'2025-07-27', daysUntil:13, pctSold:57 }, // -13 red
+  // Yankees series (Aug 1–4) — days 18–21, target 78%
+  { opponent:'New York Yankees',  date:'2025-08-01', daysUntil:18, pctSold:91 }, // +13 green
+  { opponent:'New York Yankees',  date:'2025-08-02', daysUntil:19, pctSold:82 }, // +4  green
+  { opponent:'New York Yankees',  date:'2025-08-03', daysUntil:20, pctSold:72 }, // -6  amber
+  { opponent:'New York Yankees',  date:'2025-08-04', daysUntil:21, pctSold:64 }, // -14 red
+  // Athletics series (Aug 11–12) — days 28–29, target 78%
+  { opponent:'Oakland Athletics', date:'2025-08-11', daysUntil:28, pctSold:83 }, // +5  green
+  { opponent:'Oakland Athletics', date:'2025-08-12', daysUntil:29, pctSold:47 }, // -31 red ← alarm
+];
 
 const US_STATES    = ['TX','OK','LA','CO','NM','CA','NY','FL','GA','IL','TN','AR','MO','KS','AZ'];
 const STATE_WEIGHTS= [260,  22,  14,  10,   8,   7,   5,   5,   4,   4,   3,   3,   3,   3,   3];
@@ -1581,8 +1609,115 @@ function renderTab2() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      plugins: {
+        legend: { position: 'bottom' },
+        annotation: {
+          annotations: {
+            dayOfZone: {
+              type: 'box',
+              xMin: '0\u20133 days', xMax: '0\u20133 days',
+              backgroundColor: 'rgba(192,17,31,0.07)',
+              borderWidth: 0,
+              label: {
+                display: true, content: '~13% day-of',
+                position: { x: 'center', y: 'end' },
+                font: { size: 9, weight: '600' }, color: '#C0111F',
+                padding: { x: 4, y: 2 },
+              },
+            },
+          },
+        },
+      },
       scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => (v * 100).toFixed(0) + '%' } } },
+    },
+  });
+
+  // ── Chart 5.5: Ticket Pacing — Upcoming Games vs. Target ──
+  destroyChart('t2-ticketPacing');
+  const upcomingPacing = UPCOMING_PACING.map(d => {
+    const target = d.daysUntil >= 17 ? 78 : d.daysUntil >= 4 ? 70 : 88;
+    const gap    = d.pctSold - target;
+    return {
+      label:    `${d.opponent.split(' ').pop()} · ${d.date.slice(5).replace('-','/')} · ${d.daysUntil}d`,
+      pctSold:  d.pctSold, target, gap,
+      color:    gap >= 0 ? '#2D9B5A' : gap >= -10 ? '#E8A020' : '#C0111F',
+      opponent: d.opponent, date: d.date, daysUntil: d.daysUntil,
+    };
+  });
+
+  const pacingLabelPlugin = {
+    id: 't2PacingLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx, scales } = chart;
+      const meta = chart.getDatasetMeta(0);
+      meta.data.forEach((bar, i) => {
+        const val = chart.data.datasets[0].data[i];
+        const x0  = scales.x.getPixelForValue(0);
+        const barW = bar.x - x0;
+        ctx.save();
+        if (barW > 36) {
+          ctx.fillStyle = '#fff'; ctx.font = '600 10px Inter,system-ui,sans-serif';
+          ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+          ctx.fillText(`${val}%`, bar.x - 5, bar.y);
+        } else {
+          ctx.fillStyle = '#374151'; ctx.font = '10px Inter,system-ui,sans-serif';
+          ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          ctx.fillText(`${val}%`, bar.x + 4, bar.y);
+        }
+        ctx.restore();
+      });
+    },
+  };
+
+  CHARTS['t2-ticketPacing'] = new Chart(document.getElementById('t2-ticketPacing'), {
+    type: 'bar',
+    plugins: [pacingLabelPlugin],
+    data: {
+      labels: upcomingPacing.map(x => x.label),
+      datasets: [{ label: '% Sold', data: upcomingPacing.map(x => x.pctSold),
+                   backgroundColor: upcomingPacing.map(x => x.color), borderRadius: 3 }],
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => upcomingPacing[items[0].dataIndex].opponent,
+            label: items => {
+              const d = upcomingPacing[items.dataIndex];
+              const statusLabel = d.gap >= 0 ? '✓ On track' : d.gap >= -10 ? '⚠ Watch' : '✗ At risk';
+              return [
+                `  ${d.pctSold}% sold  (target: ${d.target}%)`,
+                `  Gap: ${d.gap > 0 ? '+' : ''}${d.gap} pts  ${statusLabel}`,
+                `  ${d.daysUntil} days to game`,
+              ];
+            },
+          },
+        },
+        annotation: {
+          annotations: {
+            floor70: {
+              type: 'line', scaleID: 'x', value: 70,
+              borderColor: '#E8A020', borderWidth: 1.5, borderDash: [4, 3],
+              label: { display: true, content: 'Day 4 floor (70%)', position: 'end',
+                       font: { size: 9 }, color: '#E8A020',
+                       backgroundColor: 'rgba(255,255,255,0.85)', padding: { x: 3, y: 2 } },
+            },
+            target78: {
+              type: 'line', scaleID: 'x', value: 78,
+              borderColor: '#2D9B5A', borderWidth: 1.5, borderDash: [4, 3],
+              label: { display: true, content: 'Day 17 target (78%)', position: 'end',
+                       font: { size: 9 }, color: '#2D9B5A',
+                       backgroundColor: 'rgba(255,255,255,0.85)', padding: { x: 3, y: 2 } },
+            },
+          },
+        },
+      },
+      scales: {
+        x: { min: 0, max: 100, ticks: { callback: v => v + '%' }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        y: { grid: { display: false } },
+      },
     },
   });
 

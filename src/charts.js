@@ -554,8 +554,115 @@ function renderTab2() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      plugins: {
+        legend: { position: 'bottom' },
+        annotation: {
+          annotations: {
+            dayOfZone: {
+              type: 'box',
+              xMin: '0\u20133 days', xMax: '0\u20133 days',
+              backgroundColor: 'rgba(192,17,31,0.07)',
+              borderWidth: 0,
+              label: {
+                display: true, content: '~13% day-of',
+                position: { x: 'center', y: 'end' },
+                font: { size: 9, weight: '600' }, color: '#C0111F',
+                padding: { x: 4, y: 2 },
+              },
+            },
+          },
+        },
+      },
       scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => (v * 100).toFixed(0) + '%' } } },
+    },
+  });
+
+  // ── Chart 5.5: Ticket Pacing — Upcoming Games vs. Target ──
+  destroyChart('t2-ticketPacing');
+  const upcomingPacing = UPCOMING_PACING.map(d => {
+    const target = d.daysUntil >= 17 ? 78 : d.daysUntil >= 4 ? 70 : 88;
+    const gap    = d.pctSold - target;
+    return {
+      label:    `${d.opponent.split(' ').pop()} · ${d.date.slice(5).replace('-','/')} · ${d.daysUntil}d`,
+      pctSold:  d.pctSold, target, gap,
+      color:    gap >= 0 ? '#2D9B5A' : gap >= -10 ? '#E8A020' : '#C0111F',
+      opponent: d.opponent, date: d.date, daysUntil: d.daysUntil,
+    };
+  });
+
+  const pacingLabelPlugin = {
+    id: 't2PacingLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx, scales } = chart;
+      const meta = chart.getDatasetMeta(0);
+      meta.data.forEach((bar, i) => {
+        const val = chart.data.datasets[0].data[i];
+        const x0  = scales.x.getPixelForValue(0);
+        const barW = bar.x - x0;
+        ctx.save();
+        if (barW > 36) {
+          ctx.fillStyle = '#fff'; ctx.font = '600 10px Inter,system-ui,sans-serif';
+          ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+          ctx.fillText(`${val}%`, bar.x - 5, bar.y);
+        } else {
+          ctx.fillStyle = '#374151'; ctx.font = '10px Inter,system-ui,sans-serif';
+          ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+          ctx.fillText(`${val}%`, bar.x + 4, bar.y);
+        }
+        ctx.restore();
+      });
+    },
+  };
+
+  CHARTS['t2-ticketPacing'] = new Chart(document.getElementById('t2-ticketPacing'), {
+    type: 'bar',
+    plugins: [pacingLabelPlugin],
+    data: {
+      labels: upcomingPacing.map(x => x.label),
+      datasets: [{ label: '% Sold', data: upcomingPacing.map(x => x.pctSold),
+                   backgroundColor: upcomingPacing.map(x => x.color), borderRadius: 3 }],
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => upcomingPacing[items[0].dataIndex].opponent,
+            label: items => {
+              const d = upcomingPacing[items.dataIndex];
+              const statusLabel = d.gap >= 0 ? '✓ On track' : d.gap >= -10 ? '⚠ Watch' : '✗ At risk';
+              return [
+                `  ${d.pctSold}% sold  (target: ${d.target}%)`,
+                `  Gap: ${d.gap > 0 ? '+' : ''}${d.gap} pts  ${statusLabel}`,
+                `  ${d.daysUntil} days to game`,
+              ];
+            },
+          },
+        },
+        annotation: {
+          annotations: {
+            floor70: {
+              type: 'line', scaleID: 'x', value: 70,
+              borderColor: '#E8A020', borderWidth: 1.5, borderDash: [4, 3],
+              label: { display: true, content: 'Day 4 floor (70%)', position: 'end',
+                       font: { size: 9 }, color: '#E8A020',
+                       backgroundColor: 'rgba(255,255,255,0.85)', padding: { x: 3, y: 2 } },
+            },
+            target78: {
+              type: 'line', scaleID: 'x', value: 78,
+              borderColor: '#2D9B5A', borderWidth: 1.5, borderDash: [4, 3],
+              label: { display: true, content: 'Day 17 target (78%)', position: 'end',
+                       font: { size: 9 }, color: '#2D9B5A',
+                       backgroundColor: 'rgba(255,255,255,0.85)', padding: { x: 3, y: 2 } },
+            },
+          },
+        },
+      },
+      scales: {
+        x: { min: 0, max: 100, ticks: { callback: v => v + '%' }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        y: { grid: { display: false } },
+      },
     },
   });
 
