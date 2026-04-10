@@ -1,7 +1,6 @@
 // ═══════════════════════════════════════════════
 // TAB NAVIGATION
 // ═══════════════════════════════════════════════
-
 function switchTab(tabId) {
   STATE.activeTab = tabId;
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -10,31 +9,60 @@ function switchTab(tabId) {
   document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
   renderTab(tabId);
 }
-
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-});
+document.querySelectorAll('.tab-btn').forEach(btn =>
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab))
+);
 
 // ═══════════════════════════════════════════════
 // BAN RENDERING
 // ═══════════════════════════════════════════════
-
 function renderBANs(containerId, banDefs) {
   const container = document.getElementById(containerId);
-  container.innerHTML = banDefs.map(({ label, value, delta, lead, tooltip }) => `
+  if (!container) return;
+  container.innerHTML = banDefs.map(({ label, value, lead, tooltip }) => `
     <div class="ban-card ${lead ? 'lead' : ''}"
          ${tooltip ? `data-tooltip="${tooltip}"` : ''}>
       <div class="ban-label">${label}</div>
       <div class="ban-value">${value}</div>
-      ${delta ? `<div class="ban-delta ${delta.startsWith('▲') ? 'pos' : 'neg'}">${delta}</div>` : ''}
     </div>
   `).join('');
 }
 
 // ═══════════════════════════════════════════════
-// FILTER WIRING
+// GLOBAL FILTER: OPPONENT + SEASON AVG TOGGLE
 // ═══════════════════════════════════════════════
 
+// Populate opponent dropdown from GAMES (sorted alpha, unique)
+(function populateOpponentSelect() {
+  const opponents = [...new Set(GAMES.map(g => g.opponent))].sort();
+  const sel = document.getElementById('g-opponent');
+  opponents.forEach(opp => {
+    const opt = document.createElement('option');
+    opt.value = opp;
+    opt.textContent = opp;
+    sel.appendChild(opt);
+  });
+})();
+
+function updateSeasonAvgVisibility() {
+  const group = document.getElementById('g-seasonAvg-group');
+  if (group) group.style.display = STATE.opponent === 'all' ? 'none' : '';
+}
+
+document.getElementById('g-opponent').addEventListener('change', e => {
+  STATE.opponent = e.target.value;
+  updateSeasonAvgVisibility();
+  renderTab(STATE.activeTab);
+});
+
+document.getElementById('g-seasonAvg').addEventListener('change', e => {
+  STATE.showSeasonAvg = e.target.checked;
+  renderTab(STATE.activeTab);
+});
+
+// ═══════════════════════════════════════════════
+// TAB FILTER WIRING
+// ═══════════════════════════════════════════════
 function wireFilter(elId, stateTab, stateKey) {
   const el = document.getElementById(elId);
   if (!el) return;
@@ -44,42 +72,41 @@ function wireFilter(elId, stateTab, stateKey) {
   });
 }
 
-// Tab 1 filters
-wireFilter('t1-venue',         'tab1', 'venue');
-wireFilter('t1-dateRange',     'tab1', 'dateRange');
-wireFilter('t1-channel',       'tab1', 'channel');
-wireFilter('t1-accountStatus', 'tab1', 'accountStatus');
+// Tab 1 — Gate Access
+wireFilter('t1-dateRange', 'tab1', 'dateRange');
+wireFilter('t1-dayType',   'tab1', 'dayType');
+wireFilter('t1-promo',     'tab1', 'promo');
 
-// Tab 2 filters
-wireFilter('t2-venue',       'tab2', 'venue');
+// Tab 2 — Ticket Sales
 wireFilter('t2-dateRange',   'tab2', 'dateRange');
-wireFilter('t2-eventType',   'tab2', 'eventType');
-wireFilter('t2-seatCategory','tab2', 'seatCategory');
+wireFilter('t2-dayType',     'tab2', 'dayType');
+wireFilter('t2-ticketType',  'tab2', 'ticketType');
 
-// Tab 3 filters
-wireFilter('t3-venue',       'tab3', 'venue');
+// Tab 3 — Food & Beverage
 wireFilter('t3-dateRange',   'tab3', 'dateRange');
+wireFilter('t3-dayType',     'tab3', 'dayType');
 wireFilter('t3-fnbCategory', 'tab3', 'fnbCategory');
-wireFilter('t3-visitType',   'tab3', 'visitType');
 
-// Tab 4 filters
-wireFilter('t4-venue',       'tab4', 'venue');
-wireFilter('t4-dateRange',   'tab4', 'dateRange');
-wireFilter('t4-segment',     'tab4', 'segment');
-wireFilter('t4-linkedStatus','tab4', 'linkedStatus');
+// Tab 4 — Fan Identity
+wireFilter('t4-dateRange',    'tab4', 'dateRange');
+wireFilter('t4-segment',      'tab4', 'segment');
+wireFilter('t4-linkedStatus', 'tab4', 'linkedStatus');
 
-// Reset buttons
+// ═══════════════════════════════════════════════
+// RESET BUTTONS
+// ═══════════════════════════════════════════════
 const TAB_DEFAULTS = {
-  tab1: { venue:'all', dateRange:'full_year', customStart:null, customEnd:null, channel:'all', accountStatus:'all' },
-  tab2: { venue:'all', dateRange:'full_year', customStart:null, customEnd:null, eventType:'all', seatCategory:'all' },
-  tab3: { venue:'all', dateRange:'full_year', customStart:null, customEnd:null, fnbCategory:'all', visitType:'all' },
-  tab4: { venue:'all', dateRange:'full_year', customStart:null, customEnd:null, segment:'all_linked', linkedStatus:'linked_only' },
+  tab1: { dateRange: 'full_season', dayType: 'all', promo: 'all' },
+  tab2: { dateRange: 'full_season', dayType: 'all', ticketType: 'all' },
+  tab3: { dateRange: 'full_season', dayType: 'all', fnbCategory: 'all' },
+  tab4: { dateRange: 'full_season', segment: 'all_linked', linkedStatus: 'linked_only' },
 };
 
 function resetTab(tabId) {
   Object.assign(STATE[tabId], TAB_DEFAULTS[tabId]);
   document.querySelectorAll(`#${tabId} .filter-select`).forEach(sel => {
-    sel.value = STATE[tabId][sel.id.replace(`t${tabId.slice(-1)}-`, '')] || 'all';
+    const key = sel.id.replace(/^t\d-/, '');
+    sel.value = STATE[tabId][key] || 'all';
   });
   renderTab(tabId);
 }
@@ -90,51 +117,62 @@ document.getElementById('t3-reset').addEventListener('click', () => resetTab('ta
 document.getElementById('t4-reset').addEventListener('click', () => resetTab('tab4'));
 
 // ═══════════════════════════════════════════════
-// CHART TOOLTIP INJECTION
+// EXPORT BUTTONS (CSV)
 // ═══════════════════════════════════════════════
-
-function applyChartTooltips() {
-  Object.entries(CHART_TOOLTIPS).forEach(([canvasId, tipText]) => {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    const card = canvas.closest('.chart-card');
-    if (!card) return;
-    const titleEl = card.querySelector('.chart-title');
-    if (!titleEl || titleEl.querySelector('.chart-info-icon')) return;
-    const icon = document.createElement('span');
-    icon.className = 'chart-info-icon';
-    icon.setAttribute('data-tooltip', tipText);
-    icon.textContent = 'ⓘ';
-    titleEl.appendChild(icon);
-  });
+function downloadCSV(rows, filename) {
+  if (!rows.length) return;
+  const keys = Object.keys(rows[0]);
+  const csv = [keys.join(','), ...rows.map(r => keys.map(k => JSON.stringify(r[k] ?? '')).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = filename;
+  a.click();
 }
+
+document.getElementById('t1-export').addEventListener('click', () => {
+  const { focused } = filterGames(STATE.tab1);
+  downloadCSV(getScanRows(focused.map(g => g.id)), 'rangers-gate-access.csv');
+});
+document.getElementById('t2-export').addEventListener('click', () => {
+  const { focused } = filterGames(STATE.tab2);
+  downloadCSV(getTicketRows(focused.map(g => g.id)), 'rangers-ticket-sales.csv');
+});
+document.getElementById('t3-export').addEventListener('click', () => {
+  const { focused } = filterGames(STATE.tab3);
+  downloadCSV(getFnbRows(focused.map(g => g.id)), 'rangers-fnb.csv');
+});
+document.getElementById('t4-export').addEventListener('click', () => {
+  downloadCSV(filterFans(STATE.tab4, 'tab4'), 'rangers-fan-identity.csv');
+});
 
 // ═══════════════════════════════════════════════
 // RENDER DISPATCHER
 // ═══════════════════════════════════════════════
-
 function renderTab(tabId) {
   if (tabId === 'tab1') renderTab1();
   else if (tabId === 'tab2') renderTab2();
   else if (tabId === 'tab3') renderTab3();
   else if (tabId === 'tab4') renderTab4();
-  applyChartTooltips();
 }
 
-// Initial render
-renderTab('tab1');
-
-// ── Final startup assertions ──
+// ── Initial startup checks ──
 (function smokeTest() {
   const errors = [];
-  if (DAILY_ADW.length !== 1095) errors.push('DAILY_ADW count wrong');
-  if (FANS.length !== 500) errors.push('FANS count wrong');
-  if (FANS.filter(f=>f.global_fan_id).length !== 389) errors.push('Linked fan count wrong');
-  const t4Fans = filterFans(STATE.tab4, 'tab4');
-  if (t4Fans.length === 0) errors.push('Tab 4 returns no fans on default filters');
+  if (GAMES.length !== 81)                                    errors.push(`GAMES: expected 81, got ${GAMES.length}`);
+  if (GAME_TICKETS.length !== 81)                             errors.push(`GAME_TICKETS: expected 81`);
+  if (GAME_SCANS.length !== 81)                               errors.push(`GAME_SCANS: expected 81`);
+  if (GAME_FNB.length !== 81)                                 errors.push(`GAME_FNB: expected 81`);
+  if (FANS.length !== 500)                                    errors.push(`FANS: expected 500, got ${FANS.length}`);
+  if (FANS.filter(f => f.global_fan_id).length !== 362)      errors.push(`Linked fans: expected 362`);
+  if (FANS.filter(f => f.linked_sources === 'SCAN|FNB').length !== 42) errors.push(`Dark fans: expected 42`);
+  if (filterGames(STATE.tab1).focused.length === 0)           errors.push('filterGames returns empty on default state');
+  if (filterFans(STATE.tab4, 'tab4').length === 0)            errors.push('filterFans tab4 returns empty');
   if (errors.length) {
     console.error('SMOKE TEST FAILURES:', errors);
   } else {
     console.log('✓ All startup checks passed');
   }
 })();
+
+// ── Initial render ──
+renderTab('tab1');
