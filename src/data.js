@@ -113,7 +113,7 @@ const GAME_BY_ID = Object.fromEntries(GAMES.map(g => [g.id, g]));
 
 // ── Seasonality ──────────────────────────────────
 // index 0–11 = Jan–Dec; season runs March(2)–September(8)
-const SEASONALITY = [0, 0, 0, 0.82, 0.88, 0.94, 1.00, 0.97, 0.91, 0, 0, 0];
+const SEASONALITY = [0, 0, 0.88, 0.82, 0.88, 0.94, 1.00, 0.97, 0.91, 0, 0, 0];
 
 const TIER_ATTENDANCE = { featured: 39200, select: 33500, standard: 27500 };
 const CAPACITY = 40518; // Globe Life Field
@@ -229,8 +229,8 @@ function generateGameFnB() {
       date:                 g.date,
       total_revenue,
       food_revenue:         Math.round(total_revenue * 0.44),
-      beer_wine_revenue:    Math.round(total_revenue * (0.38 + (g.month >= 5 && g.month <= 7 ? 0.03 : 0))),
-      non_alc_revenue:      Math.round(total_revenue * 0.18),
+      beer_wine_revenue:    Math.round(total_revenue * (g.month >= 5 && g.month <= 7 ? 0.41 : 0.38)),
+      non_alc_revenue:      Math.round(total_revenue * (g.month >= 5 && g.month <= 7 ? 0.15 : 0.18)),
       transaction_count:    Math.round(unique_visitors_with_fnb * 1.85),
       unique_visitors_with_fnb,
       avg_per_cap:          parseFloat(percap.toFixed(2)),

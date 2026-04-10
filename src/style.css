@@ -27,6 +27,7 @@
       padding: 6px 12px; border-radius: var(--radius);
       display: flex; align-items: center;
     }
+    #logo-area img { max-width: 120px; }
     #org-name { font-size: 16px; font-weight: 600; }
     #tab-bar {
       display: flex; gap: 0;

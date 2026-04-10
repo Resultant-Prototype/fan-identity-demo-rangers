@@ -47,7 +47,9 @@ function renderStateMap(containerId, stateDataMap, tooltipFn) {
       '46':'SD','47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV',
       '55':'WI','56':'WY',
     };
+    document.querySelectorAll('.map-d3-tip').forEach(t => t.remove());
     const tip = document.createElement('div');
+    tip.className = 'map-d3-tip';
     tip.style.cssText = 'position:fixed;background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:6px;font-size:12px;pointer-events:none;display:none;z-index:9999;';
     document.body.appendChild(tip);
 

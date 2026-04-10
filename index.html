@@ -14,8 +14,8 @@
   <style>/* ── Resultant Brand Tokens ── */
     :root {
       --navy:       #003278;
-      --teal:       #00A896;
-      --teal-light: #E6F7F5;
+      --teal:       #C0111F;
+      --teal-light: #FDE8EA;
       --white:      #FFFFFF;
       --gray-50:    #F8F9FA;
       --gray-100:   #EEF0F3;
@@ -36,11 +36,11 @@
       padding: 12px 24px; height: 56px;
     }
     #logo-area {
-      border: 2px dashed rgba(255,255,255,.4);
-      padding: 4px 12px; border-radius: var(--radius);
-      font-size: 12px; color: rgba(255,255,255,.7);
-      min-width: 140px; text-align: center;
+      background: var(--gray-50);
+      padding: 6px 12px; border-radius: var(--radius);
+      display: flex; align-items: center;
     }
+    #logo-area img { max-width: 120px; }
     #org-name { font-size: 16px; font-weight: 600; }
     #tab-bar {
       display: flex; gap: 0;
@@ -230,7 +230,7 @@
 <body>
   <header id="app-header">
     <div id="logo-area">
-      <span style="font-size:11px;opacity:.7;">Texas Rangers</span>
+      <img src="RangersLogo.png" alt="Texas Rangers" style="height:36px;display:block;">
     </div>
     <span id="org-name">Texas Rangers Baseball Club</span>
   </header>
@@ -671,7 +671,7 @@ const GAME_BY_ID = Object.fromEntries(GAMES.map(g => [g.id, g]));
 
 // ── Seasonality ──────────────────────────────────
 // index 0–11 = Jan–Dec; season runs March(2)–September(8)
-const SEASONALITY = [0, 0, 0, 0.82, 0.88, 0.94, 1.00, 0.97, 0.91, 0, 0, 0];
+const SEASONALITY = [0, 0, 0.88, 0.82, 0.88, 0.94, 1.00, 0.97, 0.91, 0, 0, 0];
 
 const TIER_ATTENDANCE = { featured: 39200, select: 33500, standard: 27500 };
 const CAPACITY = 40518; // Globe Life Field
@@ -787,8 +787,8 @@ function generateGameFnB() {
       date:                 g.date,
       total_revenue,
       food_revenue:         Math.round(total_revenue * 0.44),
-      beer_wine_revenue:    Math.round(total_revenue * (0.38 + (g.month >= 5 && g.month <= 7 ? 0.03 : 0))),
-      non_alc_revenue:      Math.round(total_revenue * 0.18),
+      beer_wine_revenue:    Math.round(total_revenue * (g.month >= 5 && g.month <= 7 ? 0.41 : 0.38)),
+      non_alc_revenue:      Math.round(total_revenue * (g.month >= 5 && g.month <= 7 ? 0.15 : 0.18)),
       transaction_count:    Math.round(unique_visitors_with_fnb * 1.85),
       unique_visitors_with_fnb,
       avg_per_cap:          parseFloat(percap.toFixed(2)),
@@ -1074,7 +1074,9 @@ function renderStateMap(containerId, stateDataMap, tooltipFn) {
       '46':'SD','47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV',
       '55':'WI','56':'WY',
     };
+    document.querySelectorAll('.map-d3-tip').forEach(t => t.remove());
     const tip = document.createElement('div');
+    tip.className = 'map-d3-tip';
     tip.style.cssText = 'position:fixed;background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:6px;font-size:12px;pointer-events:none;display:none;z-index:9999;';
     document.body.appendChild(tip);
 
@@ -2156,8 +2158,16 @@ document.getElementById('t4-reset').addEventListener('click', () => resetTab('ta
 // ═══════════════════════════════════════════════
 // EXPORT BUTTONS (CSV)
 // ═══════════════════════════════════════════════
+function showExportEmpty() {
+  const msg = document.createElement('div');
+  msg.textContent = 'No data to export — adjust your filters.';
+  msg.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#C0111F;color:#fff;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);';
+  document.body.appendChild(msg);
+  setTimeout(() => msg.remove(), 3000);
+}
+
 function downloadCSV(rows, filename) {
-  if (!rows.length) return;
+  if (!rows.length) { showExportEmpty(); return; }
   const keys = Object.keys(rows[0]);
   const csv = [keys.join(','), ...rows.map(r => keys.map(k => JSON.stringify(r[k] ?? '')).join(','))].join('\n');
   const a = document.createElement('a');

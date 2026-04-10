@@ -119,8 +119,16 @@ document.getElementById('t4-reset').addEventListener('click', () => resetTab('ta
 // ═══════════════════════════════════════════════
 // EXPORT BUTTONS (CSV)
 // ═══════════════════════════════════════════════
+function showExportEmpty() {
+  const msg = document.createElement('div');
+  msg.textContent = 'No data to export — adjust your filters.';
+  msg.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#C0111F;color:#fff;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);';
+  document.body.appendChild(msg);
+  setTimeout(() => msg.remove(), 3000);
+}
+
 function downloadCSV(rows, filename) {
-  if (!rows.length) return;
+  if (!rows.length) { showExportEmpty(); return; }
   const keys = Object.keys(rows[0]);
   const csv = [keys.join(','), ...rows.map(r => keys.map(k => JSON.stringify(r[k] ?? '')).join(','))].join('\n');
   const a = document.createElement('a');
