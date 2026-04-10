@@ -575,3 +575,183 @@ function renderTab2() {
     },
   });
 }
+
+// ═══════════════════════════════════════════════
+// TAB 3: FOOD & BEVERAGE
+// ═══════════════════════════════════════════════
+function renderTab3() {
+  const f = STATE.tab3;
+  const { mode, focused, baseline } = filterGames(f);
+
+  const fIds  = focused.map(g => g.id);
+  const fFnbAll = getFnbRows(fIds);
+  const fScans  = getScanRows(fIds);
+
+  // Apply fnbCategory filter to revenue field used in charts
+  const catRevField = f.fnbCategory !== 'all' ? `${f.fnbCategory}_revenue` : 'total_revenue';
+  // fFnb is used for aggregate metrics; individual charts use catRevField for per-game series
+  const fFnb = fFnbAll;  // full rows kept for attach rate, transaction counts, etc.
+
+  // ── BANs ──
+  const totalRev    = fFnb.reduce((s, r) => s + r[catRevField], 0);
+  const totalScanned = fScans.reduce((s, r) => s + r.tickets_scanned, 0);
+  const avgPercap   = totalScanned > 0 ? totalRev / totalScanned : 0;
+  const attachRate  = fFnb.length ? fFnb.reduce((s, r) => s + r.fnb_attach_rate, 0) / fFnb.length : 0;
+  const totalTx     = fFnb.reduce((s, r) => s + r.transaction_count, 0);
+  const totalVisitors = fFnb.reduce((s, r) => s + r.unique_visitors_with_fnb, 0);
+  const avgTxVal    = totalVisitors > 0 ? totalRev / totalTx : 0;
+  // Top category: sum each across all filtered games
+  const catTotals = { food: 0, beer_wine: 0, non_alc: 0 };
+  fFnb.forEach(r => { catTotals.food += r.food_revenue; catTotals.beer_wine += r.beer_wine_revenue; catTotals.non_alc += r.non_alc_revenue; });
+  const topCat = Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0]?.[0] || 'food';
+  const catLabels = { food: 'Food', beer_wine: 'Beer & Wine', non_alc: 'Non-Alcoholic' };
+
+  renderBANs('t3-bans', [
+    { label: 'Total F&B Revenue',   value: fmt.currency(totalRev) },
+    { label: 'Avg Per-Cap Spend',   value: '$' + avgPercap.toFixed(2) },
+    { label: 'F&B Attach Rate',     value: fmt.pct(attachRate) },
+    { label: 'Top Category',        value: catLabels[topCat], lead: true },
+    { label: 'Transactions',        value: fmt.num(totalTx) },
+    { label: 'Avg Transaction',     value: '$' + avgTxVal.toFixed(2) },
+  ]);
+
+  const sortedGames3 = [...focused].sort((a, b) => a.date.localeCompare(b.date));
+
+  // ── Chart 1: F&B Revenue by Game (line) ──
+  destroyChart('t3-revByGame');
+  const revByGame = sortedGames3.map(g => { const r = fFnb.find(x => x.game_id === g.id); return r ? r[catRevField] : 0; });
+  const revLabel  = f.fnbCategory !== 'all' ? catLabels[f.fnbCategory] + ' Revenue' : 'F&B Revenue';
+  const datasets31 = [{ label: revLabel, data: revByGame, borderColor: PALETTE.navy,
+                         backgroundColor: 'rgba(0,50,120,0.07)', fill: true, pointRadius: 0, borderWidth: 2, tension: 0.2 }];
+  if (mode === 'focused' && STATE.showSeasonAvg) {
+    const bFnb = getFnbRows((baseline || []).map(g => g.id));
+    const bAvg = bFnb.length ? bFnb.reduce((s, r) => s + r[catRevField], 0) / bFnb.length : 0;
+    datasets31.push({ label: 'Season Avg', data: sortedGames3.map(() => bAvg),
+                      borderColor: PALETTE.grayDim, borderDash: [4, 4], pointRadius: 0, borderWidth: 1, fill: false });
+  }
+
+  CHARTS['t3-revByGame'] = new Chart(document.getElementById('t3-revByGame'), {
+    type: 'line',
+    data: { labels: sortedGames3.map(g => g.date.slice(5)), datasets: datasets31 },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: { callbacks: { title: items => { const g = sortedGames3[items[0]?.dataIndex]; return g ? `${g.date} vs. ${g.opponent}` : ''; }, label: ctx => fmt.currency(ctx.raw) } },
+      },
+      scales: { x: { ticks: { maxTicksLimit: 12 }, grid: { display: false } }, y: { ticks: { callback: v => fmt.currency(v) } } },
+    },
+  });
+
+  // ── Chart 2: Per-Cap Spend by Day Type (bar) ──
+  destroyChart('t3-perCapByDayType');
+  const dayTypes3 = ['day_game', 'weeknight', 'weekend_friday'];
+  const dayLabels3 = ['Day Game', 'Weeknight', 'Weekend & Friday Night'];
+  const percapByDayType = dayTypes3.map(dt => {
+    const rows = GAME_FNB.filter(r => GAME_BY_ID[r.game_id]?.day_type === dt);
+    const scans = GAME_SCANS.filter(r => GAME_BY_ID[r.game_id]?.day_type === dt);
+    const rev = rows.reduce((s, r) => s + r.total_revenue, 0);
+    const att = scans.reduce((s, r) => s + r.tickets_scanned, 0);
+    return att > 0 ? rev / att : 0;
+  });
+
+  CHARTS['t3-perCapByDayType'] = new Chart(document.getElementById('t3-perCapByDayType'), {
+    type: 'bar',
+    data: {
+      labels: dayLabels3,
+      datasets: [{ label: 'Avg Per-Cap', data: percapByDayType,
+                   backgroundColor: [PALETTE.navySoft, PALETTE.navyMid, PALETTE.navy], borderRadius: 4 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '$' + ctx.raw.toFixed(2) } } },
+      scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => '$' + v.toFixed(0) } } },
+    },
+  });
+
+  // ── Chart 3: Revenue by Category over Season (stacked bar by month) ──
+  destroyChart('t3-revByCatMonth');
+  const months3  = [...new Set(GAMES.map(g => g.month))].sort((a, b) => a - b);
+  const monthNames3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const catColors3 = { food: PALETTE.navy, beer_wine: PALETTE.navyMid, non_alc: PALETTE.navySoft };
+  const catDatasets3 = ['food', 'beer_wine', 'non_alc'].map(cat => ({
+    label: catLabels[cat],
+    data: months3.map(m => {
+      const rows = GAME_FNB.filter(r => GAME_BY_ID[r.game_id]?.month === m);
+      return rows.reduce((s, r) => s + r[`${cat}_revenue`], 0);
+    }),
+    backgroundColor: catColors3[cat],
+  }));
+
+  CHARTS['t3-revByCatMonth'] = new Chart(document.getElementById('t3-revByCatMonth'), {
+    type: 'bar',
+    data: { labels: months3.map(m => monthNames3[m]), datasets: catDatasets3 },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      scales: {
+        x: { stacked: true, grid: { display: false } },
+        y: { stacked: true, ticks: { callback: v => fmt.currency(v) } },
+      },
+    },
+  });
+
+  // ── Chart 4: F&B Attach Rate by Opponent (horizontal bar, all opponents, sorted) ──
+  destroyChart('t3-attachByOpponent');
+  const oppAttach = {};
+  GAME_FNB.forEach(r => {
+    const g = GAME_BY_ID[r.game_id];
+    if (!g) return;
+    if (!oppAttach[g.opponent]) oppAttach[g.opponent] = { total: 0, count: 0 };
+    oppAttach[g.opponent].total += r.fnb_attach_rate;
+    oppAttach[g.opponent].count++;
+  });
+  const oppAttachSorted = Object.entries(oppAttach)
+    .map(([opp, d]) => ({ opp, avg: d.total / d.count }))
+    .sort((a, b) => b.avg - a.avg);
+
+  CHARTS['t3-attachByOpponent'] = new Chart(document.getElementById('t3-attachByOpponent'), {
+    type: 'bar',
+    data: {
+      labels: oppAttachSorted.map(d => d.opp),
+      datasets: [{ label: 'F&B Attach Rate', data: oppAttachSorted.map(d => d.avg),
+                   backgroundColor: oppAttachSorted.map(d => d.opp === STATE.opponent ? PALETTE.redSoft : PALETTE.navy),
+                   borderRadius: 3 }],
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt.pct(ctx.raw) } } },
+      scales: { x: { ticks: { callback: v => fmt.pct(v) } }, y: { ticks: { font: { size: 11 } }, grid: { display: false } } },
+    },
+  });
+
+  // ── Chart 5: Per-Cap Spend by Seating Area (bar, Globe Life Field sections) ──
+  destroyChart('t3-perCapBySection');
+  // Per-cap by section synthesized from FANS fnb_spend / fnb_visit_count by seat_section
+  const sectionMap = {};
+  FANS.filter(f2 => f2.fnb_fan_id && f2.seat_section).forEach(f2 => {
+    if (!sectionMap[f2.seat_section]) sectionMap[f2.seat_section] = { total: 0, count: 0 };
+    const perVisit = f2.fnb_spend && f2.fnb_visit_count ? f2.fnb_spend / f2.fnb_visit_count : 0;
+    sectionMap[f2.seat_section].total += perVisit;
+    sectionMap[f2.seat_section].count++;
+  });
+  const sectionOrder = ['Balcones Speakeasy', 'Lexus Club', 'Field Level', 'Main Level', 'Upper Level', 'Outfield'];
+  const sectionPercap = sectionOrder.map(sec => {
+    const d = sectionMap[sec];
+    return d && d.count > 0 ? d.total / d.count : 0;
+  });
+
+  CHARTS['t3-perCapBySection'] = new Chart(document.getElementById('t3-perCapBySection'), {
+    type: 'bar',
+    data: {
+      labels: sectionOrder,
+      datasets: [{ label: 'Avg Per-Cap / Visit', data: sectionPercap,
+                   backgroundColor: PALETTE.navy, borderRadius: 4 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '$' + ctx.raw.toFixed(2) } } },
+      scales: { x: { grid: { display: false }, ticks: { maxRotation: 25 } }, y: { ticks: { callback: v => '$' + v.toFixed(0) } } },
+    },
+  });
+}
