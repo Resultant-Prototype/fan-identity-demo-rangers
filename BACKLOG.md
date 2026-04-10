@@ -26,11 +26,11 @@
 
 ## Data Issues (low-variance / thin data — revisit before live demo)
 
-- **362 linked fans is a low count** — For a full MLB season (81 home games), 362 linked fans feels thin. Should be 2,000–5,000+ to feel credible in a front-office demo. Consider expanding FANS array or adjusting linkage rate commentary in the Tab 4 match banner.
+~~- **362 linked fans is a low count**~~ ✓ Fixed — Scaled to 3,000 total fans (2,172 linked, 252 dark fans). Match banner updated.
 
-- **Arrival Distribution shows near-zero variance** — Monthly stacked bars look nearly identical across all months. Real arrival patterns shift meaningfully (summer heat → more late arrivals; Opening Day → extremely early). Inject seasonal variance into `arr_*` fields in `GAME_SCANS` data.
+~~- **Arrival Distribution shows near-zero variance**~~ ✓ Fixed — `ARR_SEASONAL` lookup injects monthly shifts: Opening Day +7% early arrivals, Aug Texas heat +6% late arrivals. Chart now shows meaningful seasonal pattern.
 
-- **LSM Scan Rate flatlines** — The line chart sits at ~97% all season with almost no movement. Real STM scan rates fluctuate 10–20 pts by month (cold April, summer road trips, September meaningless games). Inject realistic variance.
+~~- **LSM Scan Rate flatlines**~~ ✓ Fixed — `STM_NS_MONTHLY` replaces flat base. Lone Star scan rate now ranges ~92% (Aug) to ~98.5% (Mar/Apr), ~6–7pt seasonal swing on the line chart.
 
 - **Food subcategories (hot dogs, beer)** — The F&B tab only shows Food / Beer & Wine / Non-Alcoholic. Rangers front office will ask about specific items. Consider adding sub-category breakdown (hot dogs, nachos, domestic beer, premium beer) either as a separate chart or as tooltip drill-down on the category chart.
 
