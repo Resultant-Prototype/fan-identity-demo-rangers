@@ -1112,10 +1112,14 @@ function renderTab3() {
 
   // ── Chart 5: Per-Cap Spend by Seating Area (bar, Globe Life Field sections) ──
   destroyChart('t3-perCapBySection');
+  const drillRevField5 = f.fnbDrilldown ? `${f.fnbDrilldown}_revenue` : null;
+  const categoryShare5 = drillRevField5
+    ? GAME_FNB.reduce((s, r) => s + r[drillRevField5], 0) / (GAME_FNB.reduce((s, r) => s + r.total_revenue, 0) || 1)
+    : 1;
   const sectionMap = {};
   FANS.filter(f2 => f2.fnb_fan_id && f2.seat_section).forEach(f2 => {
     if (!sectionMap[f2.seat_section]) sectionMap[f2.seat_section] = { total: 0, count: 0 };
-    const perVisit = f2.fnb_spend && f2.fnb_visit_count ? f2.fnb_spend / f2.fnb_visit_count : 0;
+    const perVisit = f2.fnb_spend && f2.fnb_visit_count ? (f2.fnb_spend / f2.fnb_visit_count) * categoryShare5 : 0;
     sectionMap[f2.seat_section].total += perVisit;
     sectionMap[f2.seat_section].count++;
   });
@@ -1166,7 +1170,8 @@ function renderTab3() {
           label: ctx => {
             const avgAll = sectionData.reduce((s, d) => s + d.val, 0) / (sectionData.length || 1);
             const mult = avgAll > 0 ? (ctx.raw / avgAll).toFixed(1) : '—';
-            return [`$${ctx.raw.toFixed(2)} per visit`, `${mult}× section average`];
+            const prefix = f.fnbDrilldown ? `${catLabels[f.fnbDrilldown]} per-cap: ` : '';
+            return [`${prefix}$${ctx.raw.toFixed(2)} per visit`, `${mult}× section average`];
           },
         }},
       },
