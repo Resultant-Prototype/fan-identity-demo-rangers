@@ -846,8 +846,10 @@ function renderTab3() {
 
   // ── Chart 1: F&B Revenue by Game (line) ──
   destroyChart('t3-revByGame');
-  const revByGame  = tlGames3.map(g => { const r = tlFnb3.find(x => x.game_id === g.id); return r ? r[catRevField] : 0; });
-  const revLabel   = f.fnbCategory !== 'all' ? catLabels[f.fnbCategory] + ' Revenue' : 'F&B Revenue';
+  const drillRevField = f.fnbDrilldown ? `${f.fnbDrilldown}_revenue` : catRevField;
+  const revByGame  = tlGames3.map(g => { const r = tlFnb3.find(x => x.game_id === g.id); return r ? r[drillRevField] : 0; });
+  const revLabel   = f.fnbDrilldown ? catLabels[f.fnbDrilldown] + ' Revenue'
+                   : f.fnbCategory !== 'all' ? catLabels[f.fnbCategory] + ' Revenue' : 'F&B Revenue';
   const ptColors3  = tlGames3.map(g => mode === 'focused' && focusedSet3.has(g.id) ? PALETTE.red : 'transparent');
   const ptRadii3   = tlGames3.map(g => mode === 'focused' && focusedSet3.has(g.id) ? 5 : 0);
   const datasets31 = [{ label: revLabel, data: revByGame, borderColor: PALETTE.navy,
@@ -855,7 +857,7 @@ function renderTab3() {
                          pointBackgroundColor: ptColors3, pointBorderColor: ptColors3,
                          pointRadius: ptRadii3, borderWidth: 2, tension: 0.2 }];
   if (mode === 'focused' && STATE.showSeasonAvg) {
-    const bAvg = fFnb.length ? fFnb.reduce((s, r) => s + r[catRevField], 0) / fFnb.length : 0;
+    const bAvg = fFnb.length ? fFnb.reduce((s, r) => s + r[drillRevField], 0) / fFnb.length : 0;
     datasets31.push({ label: 'Season Avg', data: tlGames3.map(() => bAvg),
                       borderColor: PALETTE.grayDim, borderDash: [4, 4], pointRadius: 0, borderWidth: 1, fill: false });
   }
@@ -874,6 +876,11 @@ function renderTab3() {
             const i = items[0]?.dataIndex;
             const fnb = tlFnb3.find(r => r.game_id === tlGames3[i]?.id);
             if (!fnb) return [];
+            if (f.fnbDrilldown) {
+              const catPerCap = fnb.avg_per_cap * (fnb[drillRevField] / fnb.total_revenue);
+              const catShare  = fnb.total_revenue > 0 ? fnb[drillRevField] / fnb.total_revenue : 0;
+              return [`${catLabels[f.fnbDrilldown]} per-cap: $${catPerCap.toFixed(2)}  ·  ${fmt.pct(catShare)} of game F&B`];
+            }
             return [`Per-cap: $${fnb.avg_per_cap.toFixed(2)}  ·  Attach: ${fmt.pct(fnb.fnb_attach_rate)}`];
           },
         }},
