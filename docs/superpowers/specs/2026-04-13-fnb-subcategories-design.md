@@ -68,7 +68,7 @@ Chart 3 renders as a horizontal bar chart:
 - **Tooltip:** subcategory name, season revenue (currency formatted), item count (e.g., "42,800 units")
 - **Back link:** a `"← All Categories"` text link rendered above the chart canvas; clicking it sets `fnbDrilldown = null` and calls `renderTab3()`
 
-Chart click handler uses Chart.js `onClick` option to detect which bar was clicked and read its index to identify the category.
+Chart click handler uses Chart.js `onClick` option. The handler checks `chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false)` — if the array is empty (click missed all bars), it does nothing. If a bar is hit, it reads `elements[0].datasetIndex` to identify which category was clicked.
 
 ---
 
