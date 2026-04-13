@@ -898,45 +898,109 @@ function renderTab3() {
     },
   });
 
-  // ── Chart 3: Revenue by Category over Season (stacked bar by month) ──
+  // ── Chart 3: Revenue by Category / Subcategory Drill-Down ──
   destroyChart('t3-revByCatMonth');
-  const months3  = [...new Set(GAMES.map(g => g.month))].sort((a, b) => a - b);
-  const monthNames3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const catColors3 = { food: PALETTE.navy, beer_wine: PALETTE.navySoft, non_alc: PALETTE.gray };
-  const catDatasets3 = ['food', 'beer_wine', 'non_alc'].map(cat => ({
-    label: catLabels[cat],
-    data: months3.map(m => {
-      const rows = GAME_FNB.filter(r => GAME_BY_ID[r.game_id]?.month === m);
-      return rows.reduce((s, r) => s + r[`${cat}_revenue`], 0);
-    }),
-    backgroundColor: catColors3[cat],
-  }));
+  const titleEl3 = document.getElementById('t3-catMonth-title');
+  const backDiv3 = document.getElementById('t3-drilldown-back');
 
-  CHARTS['t3-revByCatMonth'] = new Chart(document.getElementById('t3-revByCatMonth'), {
-    type: 'bar',
-    data: { labels: months3.map(m => monthNames3[m]), datasets: catDatasets3 },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: {
-          callbacks: {
-            title: items => monthNames3[months3[items[0]?.dataIndex]] + ' — F&B Revenue by Category',
-            label: ctx => {
-              const i = ctx.dataIndex;
-              const monthTotal = catDatasets3.reduce((s, ds) => s + (ds.data[i] || 0), 0);
-              const pct = monthTotal > 0 ? fmt.pct(ctx.raw / monthTotal) : '';
-              return `${ctx.dataset.label}: ${fmt.currency(ctx.raw)}  (${pct})`;
+  if (f.fnbDrilldown) {
+    // ── Drill-down state: horizontal bar of subcategories ──
+    const drillKey    = f.fnbDrilldown;
+    const catRevField3 = `${drillKey}_revenue`;
+    const catSeasonRev = GAME_FNB.reduce((s, r) => s + r[catRevField3], 0);
+    const subcats3 = FNB_SUBCATS[drillKey]
+      .map(sc => ({
+        ...sc,
+        revenue: Math.round(catSeasonRev * sc.share),
+        units:   Math.round(catSeasonRev * sc.share / sc.avg_price),
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    if (titleEl3) titleEl3.firstChild.textContent = `${catLabels[drillKey]} — Subcategory Breakdown `;
+    if (backDiv3) backDiv3.style.display = '';
+
+    CHARTS['t3-revByCatMonth'] = new Chart(document.getElementById('t3-revByCatMonth'), {
+      type: 'bar',
+      data: {
+        labels: subcats3.map(sc => sc.label),
+        datasets: [{
+          label: 'Season Revenue',
+          data:  subcats3.map(sc => sc.revenue),
+          backgroundColor: subcats3.map((_, i) => i === 0 ? PALETTE.red : PALETTE.navy),
+          borderRadius: 3,
+        }],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: {
+            title: items => subcats3[items[0]?.dataIndex]?.label || '',
+            label: ctx  => fmt.currency(ctx.raw),
+            afterBody: items => {
+              const sc = subcats3[items[0]?.dataIndex];
+              return sc ? [`${fmt.num(sc.units)} units`] : [];
+            },
+          }},
+        },
+        scales: {
+          x: { ticks: { callback: v => fmt.currency(v) }, grid: { display: false } },
+          y: { grid: { display: false } },
+        },
+      },
+    });
+
+  } else {
+    // ── Top-level state: stacked bar by month ──
+    if (titleEl3) titleEl3.firstChild.textContent = 'Revenue by Category over Season ';
+    if (backDiv3) backDiv3.style.display = 'none';
+
+    const months3     = [...new Set(GAMES.map(g => g.month))].sort((a, b) => a - b);
+    const monthNames3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const catColors3  = { food: PALETTE.navy, beer_wine: PALETTE.navySoft, non_alc: PALETTE.gray };
+    const catDatasets3 = ['food', 'beer_wine', 'non_alc'].map(cat => ({
+      label: catLabels[cat],
+      data: months3.map(m => {
+        const rows = GAME_FNB.filter(r => GAME_BY_ID[r.game_id]?.month === m);
+        return rows.reduce((s, r) => s + r[`${cat}_revenue`], 0);
+      }),
+      backgroundColor: catColors3[cat],
+    }));
+
+    CHARTS['t3-revByCatMonth'] = new Chart(document.getElementById('t3-revByCatMonth'), {
+      type: 'bar',
+      data: { labels: months3.map(m => monthNames3[m]), datasets: catDatasets3 },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        onClick: (e, _elements, chart) => {
+          const els = chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+          if (!els.length) return;
+          const catKeys = ['food', 'beer_wine', 'non_alc'];
+          const clicked = catKeys[els[0].datasetIndex];
+          if (clicked) { STATE.tab3.fnbDrilldown = clicked; renderTab3(); }
+        },
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              title: items => monthNames3[months3[items[0]?.dataIndex]] + ' — F&B Revenue by Category',
+              label: ctx => {
+                const i = ctx.dataIndex;
+                const monthTotal = catDatasets3.reduce((s, ds) => s + (ds.data[i] || 0), 0);
+                const pct = monthTotal > 0 ? fmt.pct(ctx.raw / monthTotal) : '';
+                return `${ctx.dataset.label}: ${fmt.currency(ctx.raw)}  (${pct})`;
+              },
             },
           },
         },
+        scales: {
+          x: { stacked: true, grid: { display: false } },
+          y: { stacked: true, ticks: { callback: v => fmt.currency(v) } },
+        },
       },
-      scales: {
-        x: { stacked: true, grid: { display: false } },
-        y: { stacked: true, ticks: { callback: v => fmt.currency(v) } },
-      },
-    },
-  });
+    });
+  }
 
   // ── Chart 4: F&B Attach Rate by Opponent (horizontal bar, all opponents, sorted) ──
   destroyChart('t3-attachByOpponent');
