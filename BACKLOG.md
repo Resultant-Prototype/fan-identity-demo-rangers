@@ -14,7 +14,7 @@
 
 ~~- **`stm_utilization` is null for dark fans**~~ ✓ Fixed — 'Secondary Market Dark Fans' BAN now has a `[data-tooltip]` callout explaining STM utilization is undefined for this segment and why (no Ticketmaster record).
 
-- **`resetTab` key mapping is fragile** — uses `.replace(/^t\d-/, '')` regex to map select IDs back to STATE keys. Works for all current IDs but would silently break if ID naming diverges. Low risk for this demo.
+~~- **`resetTab` key mapping is fragile**~~ ✓ Fixed — `wireFilter` now populates `FILTER_KEY_MAP[elId] = stateKey` as each filter is registered. `resetTab` looks up `FILTER_KEY_MAP[sel.id]` instead of using the regex. Single source of truth; silently-unknown selects are skipped via `if (key === undefined) return`.
 
 ~~- **F&B subcategory filter — extend to other charts**~~ ✓ Fixed — Charts 1, 4, and 5 now respect `fnbDrilldown`. Chart 1 shows category revenue per game with category per-cap tooltip. Chart 4 swaps attach rate for category per-cap by opponent with ±diff tooltip. Chart 5 scales section per-cap by season-level category share with category-prefixed tooltip.
 

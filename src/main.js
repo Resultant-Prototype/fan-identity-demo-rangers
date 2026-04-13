@@ -63,7 +63,10 @@ document.getElementById('g-seasonAvg').addEventListener('change', e => {
 // ═══════════════════════════════════════════════
 // TAB FILTER WIRING
 // ═══════════════════════════════════════════════
+const FILTER_KEY_MAP = {}; // elId → stateKey, populated by wireFilter calls below
+
 function wireFilter(elId, stateTab, stateKey) {
+  FILTER_KEY_MAP[elId] = stateKey;
   const el = document.getElementById(elId);
   if (!el) return;
   el.addEventListener('change', () => {
@@ -111,8 +114,9 @@ const TAB_DEFAULTS = {
 function resetTab(tabId) {
   Object.assign(STATE[tabId], TAB_DEFAULTS[tabId]);
   document.querySelectorAll(`#${tabId} .filter-select`).forEach(sel => {
-    const key = sel.id.replace(/^t\d-/, '');
-    sel.value = STATE[tabId][key] || 'all';
+    const key = FILTER_KEY_MAP[sel.id];
+    if (key === undefined) return;
+    sel.value = STATE[tabId][key] ?? 'all';
   });
   renderTab(tabId);
 }
