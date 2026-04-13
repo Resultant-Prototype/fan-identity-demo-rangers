@@ -19,11 +19,12 @@ jobs:
         run: |
           git push https://bvinsonrez:${MIRROR_PAT}@github.com/Resultant-Prototype/fan-identity-demo-rangers.git main --force
 
-      - name: Trigger GitHub Pages build on mirror
+      - name: Trigger Pages deploy workflow on mirror
         env:
           MIRROR_PAT: ${{ secrets.MIRROR_PAT }}
         run: |
           curl -s -X POST \
             -H "Authorization: token ${MIRROR_PAT}" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/Resultant-Prototype/fan-identity-demo-rangers/pages/builds
+            https://api.github.com/repos/Resultant-Prototype/fan-identity-demo-rangers/actions/workflows/pages-deploy.yml/dispatches \
+            -d '{"ref":"main"}'
