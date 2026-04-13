@@ -8,7 +8,7 @@ const STATE = {
   showSeasonAvg: true,        // global toggle — only relevant when opponent !== 'all'
   tab1: { dateRange: 'full_season', dayType: 'all', promo: 'all' },
   tab2: { dateRange: 'full_season', dayType: 'all', ticketType: 'all' },
-  tab3: { dateRange: 'full_season', dayType: 'all', fnbCategory: 'all' },
+  tab3: { dateRange: 'full_season', dayType: 'all', fnbCategory: 'all', fnbDrilldown: null },
   tab4: { dateRange: 'full_season', segment: 'all_linked', linkedStatus: 'linked_only' },
 };
 
