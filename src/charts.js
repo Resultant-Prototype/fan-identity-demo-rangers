@@ -708,19 +708,23 @@ function renderTab2() {
     beforeDatasetsDraw(chart) {
       const { ctx, scales } = chart;
       const meta = chart.getDatasetMeta(0);
+      // Use slot height (from scale) so the target box is always wider than the inner bar
+      const slotH = meta.data.length > 1
+        ? Math.abs(meta.data[1].y - meta.data[0].y)
+        : Math.abs(scales.y.getPixelForValue(1) - scales.y.getPixelForValue(0));
+      const boxH = slotH * 0.78;
       meta.data.forEach((bar, i) => {
         const target = upcomingPacing[i].target;
         const x0   = scales.x.getPixelForValue(0);
         const xT   = scales.x.getPixelForValue(target);
-        const halfH = bar.height / 2;
         ctx.save();
         ctx.fillStyle = 'rgba(0,0,0,0.07)';
-        ctx.fillRect(x0, bar.y - halfH, xT - x0, bar.height);
+        ctx.fillRect(x0, bar.y - boxH / 2, xT - x0, boxH);
         ctx.strokeStyle = 'rgba(0,0,0,0.25)';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.moveTo(xT, bar.y - halfH);
-        ctx.lineTo(xT, bar.y + halfH);
+        ctx.moveTo(xT, bar.y - boxH / 2);
+        ctx.lineTo(xT, bar.y + boxH / 2);
         ctx.stroke();
         ctx.restore();
       });
@@ -733,7 +737,8 @@ function renderTab2() {
     data: {
       labels: upcomingPacing.map(x => x.label),
       datasets: [{ label: '% Sold', data: upcomingPacing.map(x => x.pctSold),
-                   backgroundColor: upcomingPacing.map(x => x.color), borderRadius: 3 }],
+                   backgroundColor: upcomingPacing.map(x => x.color), borderRadius: 3,
+                   barPercentage: 0.5 }],
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
