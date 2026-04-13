@@ -44,7 +44,7 @@
 
 ## Feature Ideas
 
-- **Ticket Pacing: bar-in-bar visualization** — Replace the current annotation-line approach (dashed lines at 70% and 78%) with a bar-in-bar chart where the outer bar represents the dynamic per-game target (based on days-out: 88% day-of, 70% at Day 4, 78% at Day 17) and the inner bar shows actual % sold. The gap or overhang between them is instantly readable without requiring the viewer to find a floating reference line. Implementation: render two datasets — a background bar at `target` opacity and a foreground bar at `pctSold`, both on the same y-axis. Replaces `floor70` and `target78` annotations in `t2-ticketPacing`.
+~~- **Ticket Pacing: bar-in-bar visualization**~~ ✓ Fixed — `barInBarPlugin` (`beforeDatasetsDraw`) draws a light gray target rectangle behind each pctSold bar. Right edge of the rectangle marks the per-game target (88% day-of · 70% at Day 4 · 78% at Day 17). Annotation lines removed. Bar past the box = ahead of target; gap visible = behind target.
 
 - **Membership Tier scatter: richer hover tooltip** — Current tooltip shows only `$X,XXX` (total cross-channel spend). Should surface: fan's spend breakdown (Tickets / F&B), their tier label, and seat section. Requires attaching extra properties to each scatter data point (`{x, y, ticketSpend, fnbSpend, section, tier}`) so `ctx.raw` in the tooltip callback can access them. Example tooltip: "Lone Star Member · Lexus Club / Ticket: $3,200 / F&B: $890 / Total: $4,090". Affects `scatterDatasets` construction and the tooltip callback in `t4-spendByTier`.
 
