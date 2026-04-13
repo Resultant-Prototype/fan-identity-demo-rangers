@@ -1028,41 +1028,87 @@ function renderTab3() {
     });
   }
 
-  // ── Chart 4: F&B Attach Rate by Opponent (horizontal bar, all opponents, sorted) ──
+  // ── Chart 4: F&B Attach Rate / Per-Cap by Opponent ──
   destroyChart('t3-attachByOpponent');
-  const oppAttach = {};
-  GAME_FNB.forEach(r => {
-    const g = GAME_BY_ID[r.game_id];
-    if (!g) return;
-    if (!oppAttach[g.opponent]) oppAttach[g.opponent] = { total: 0, count: 0 };
-    oppAttach[g.opponent].total += r.fnb_attach_rate;
-    oppAttach[g.opponent].count++;
-  });
-  const oppAttachSorted = Object.entries(oppAttach)
-    .map(([opp, d]) => ({ opp, avg: d.total / d.count }))
-    .sort((a, b) => b.avg - a.avg);
+  const titleEl4 = document.getElementById('t3-attachByOpponent-title');
 
-  CHARTS['t3-attachByOpponent'] = new Chart(document.getElementById('t3-attachByOpponent'), {
-    type: 'bar',
-    data: {
-      labels: oppAttachSorted.map(d => d.opp),
-      datasets: [{ label: 'F&B Attach Rate', data: oppAttachSorted.map(d => d.avg),
-                   backgroundColor: oppAttachSorted.map(d => d.opp === STATE.opponent ? PALETTE.redSoft : PALETTE.navy),
-                   borderRadius: 3 }],
-    },
-    options: {
-      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: {
-        label: ctx => {
-          const avg = oppAttachSorted.reduce((s, d) => s + d.avg, 0) / (oppAttachSorted.length || 1);
-          const diff = ctx.raw - avg;
-          const sign = diff >= 0 ? '+' : '−';
-          return [`Attach: ${fmt.pct(ctx.raw)}`, `${sign}${fmt.pct(Math.abs(diff))} vs. opponent avg`];
-        },
-      }}},
-      scales: { x: { ticks: { callback: v => fmt.pct(v) } }, y: { ticks: { font: { size: 11 } }, grid: { display: false } } },
-    },
-  });
+  if (f.fnbDrilldown) {
+    // ── Drill-down: category per-cap by opponent ──
+    const drillRevField4 = `${f.fnbDrilldown}_revenue`;
+    const oppData4 = {};
+    GAME_FNB.forEach(r => {
+      const g = GAME_BY_ID[r.game_id];
+      if (!g) return;
+      if (!oppData4[g.opponent]) oppData4[g.opponent] = { catRev: 0, scanned: 0 };
+      oppData4[g.opponent].catRev  += r[drillRevField4];
+      oppData4[g.opponent].scanned += r.avg_per_cap > 0 ? r.total_revenue / r.avg_per_cap : 0;
+    });
+    const oppPerCapSorted = Object.entries(oppData4)
+      .map(([opp, d]) => ({ opp, perCap: d.scanned > 0 ? d.catRev / d.scanned : 0 }))
+      .sort((a, b) => b.perCap - a.perCap);
+
+    if (titleEl4) { const tn = [...titleEl4.childNodes].find(n => n.nodeType === Node.TEXT_NODE); if (tn) tn.textContent = `${catLabels[f.fnbDrilldown]} Per-Cap by Opponent `; }
+
+    CHARTS['t3-attachByOpponent'] = new Chart(document.getElementById('t3-attachByOpponent'), {
+      type: 'bar',
+      data: {
+        labels: oppPerCapSorted.map(d => d.opp),
+        datasets: [{ label: catLabels[f.fnbDrilldown] + ' Per-Cap', data: oppPerCapSorted.map(d => d.perCap),
+                     backgroundColor: oppPerCapSorted.map(d => d.opp === STATE.opponent ? PALETTE.redSoft : PALETTE.navy),
+                     borderRadius: 3 }],
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          label: ctx => {
+            const avg = oppPerCapSorted.reduce((s, d) => s + d.perCap, 0) / (oppPerCapSorted.length || 1);
+            const diff = ctx.raw - avg;
+            const sign = diff >= 0 ? '+' : '−';
+            return [`${catLabels[f.fnbDrilldown]} per-cap: $${ctx.raw.toFixed(2)}`, `${sign}$${Math.abs(diff).toFixed(2)} vs. opponent avg`];
+          },
+        }}},
+        scales: { x: { ticks: { callback: v => '$' + v.toFixed(2) } }, y: { ticks: { font: { size: 11 } }, grid: { display: false } } },
+      },
+    });
+
+  } else {
+    // ── Top-level: attach rate by opponent (unchanged) ──
+    if (titleEl4) { const tn = [...titleEl4.childNodes].find(n => n.nodeType === Node.TEXT_NODE); if (tn) tn.textContent = 'F&B Attach Rate by Opponent '; }
+
+    const oppAttach = {};
+    GAME_FNB.forEach(r => {
+      const g = GAME_BY_ID[r.game_id];
+      if (!g) return;
+      if (!oppAttach[g.opponent]) oppAttach[g.opponent] = { total: 0, count: 0 };
+      oppAttach[g.opponent].total += r.fnb_attach_rate;
+      oppAttach[g.opponent].count++;
+    });
+    const oppAttachSorted = Object.entries(oppAttach)
+      .map(([opp, d]) => ({ opp, avg: d.total / d.count }))
+      .sort((a, b) => b.avg - a.avg);
+
+    CHARTS['t3-attachByOpponent'] = new Chart(document.getElementById('t3-attachByOpponent'), {
+      type: 'bar',
+      data: {
+        labels: oppAttachSorted.map(d => d.opp),
+        datasets: [{ label: 'F&B Attach Rate', data: oppAttachSorted.map(d => d.avg),
+                     backgroundColor: oppAttachSorted.map(d => d.opp === STATE.opponent ? PALETTE.redSoft : PALETTE.navy),
+                     borderRadius: 3 }],
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          label: ctx => {
+            const avg = oppAttachSorted.reduce((s, d) => s + d.avg, 0) / (oppAttachSorted.length || 1);
+            const diff = ctx.raw - avg;
+            const sign = diff >= 0 ? '+' : '−';
+            return [`Attach: ${fmt.pct(ctx.raw)}`, `${sign}${fmt.pct(Math.abs(diff))} vs. opponent avg`];
+          },
+        }}},
+        scales: { x: { ticks: { callback: v => fmt.pct(v) } }, y: { ticks: { font: { size: 11 } }, grid: { display: false } } },
+      },
+    });
+  }
 
   // ── Chart 5: Per-Cap Spend by Seating Area (bar, Globe Life Field sections) ──
   destroyChart('t3-perCapBySection');
