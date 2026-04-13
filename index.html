@@ -1737,7 +1737,9 @@ function renderTab2() {
                 display: true, content: '~13% day-of',
                 position: { x: 'center', y: 'end' },
                 font: { size: 9, weight: '600' }, color: '#C0111F',
-                padding: { x: 4, y: 2 },
+                backgroundColor: 'rgba(255,255,255,0.92)',
+                borderRadius: 3,
+                padding: { x: 5, y: 3 },
               },
             },
           },
@@ -2258,10 +2260,20 @@ function renderTab4() {
         if (val == null) return;
         ctx.save();
         ctx.font = '700 10px "Lexend Deca",system-ui,sans-serif';
-        ctx.fillStyle = PALETTE.red;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText('avg ' + fmt.currency(Math.round(val)), point.x + 12, point.y - 2);
+        const label = 'avg ' + fmt.currency(Math.round(val));
+        const x = point.x + 12;
+        const y = point.y - 2;
+        const pad = 4;
+        const w = ctx.measureText(label).width;
+        // White pill behind the label so it reads clearly over dense scatter dots
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.beginPath();
+        ctx.roundRect(x - pad, y - 7, w + pad * 2, 14, 3);
+        ctx.fill();
+        ctx.fillStyle = PALETTE.red;
+        ctx.fillText(label, x, y);
         ctx.restore();
       });
     },
