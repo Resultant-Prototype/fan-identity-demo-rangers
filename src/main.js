@@ -87,6 +87,12 @@ wireFilter('t3-dateRange',   'tab3', 'dateRange');
 wireFilter('t3-dayType',     'tab3', 'dayType');
 wireFilter('t3-fnbCategory', 'tab3', 'fnbCategory');
 
+document.getElementById('t3-back-link').addEventListener('click', e => {
+  e.preventDefault();
+  STATE.tab3.fnbDrilldown = null;
+  renderTab3();
+});
+
 // Tab 4 — Fan Identity
 wireFilter('t4-dateRange',    'tab4', 'dateRange');
 wireFilter('t4-segment',      'tab4', 'segment');
