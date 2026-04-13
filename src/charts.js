@@ -809,11 +809,28 @@ function renderTab3() {
   const topCat = Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0]?.[0] || 'food';
   const catLabels = { food: 'Food', beer_wine: 'Beer & Wine', non_alc: 'Non-Alcoholic' };
 
+  // 4th BAN: Top Category (top-level) or Top Sub-Category (drilled in)
+  let topBAN;
+  if (f.fnbDrilldown) {
+    const catRevField4 = `${f.fnbDrilldown}_revenue`;
+    const catSeasonRev4 = GAME_FNB.reduce((s, r) => s + r[catRevField4], 0);
+    const topSub = FNB_SUBCATS[f.fnbDrilldown]
+      .map(sc => ({ ...sc, revenue: Math.round(catSeasonRev4 * sc.share), units: Math.round(catSeasonRev4 * sc.share / sc.avg_price) }))
+      .sort((a, b) => b.revenue - a.revenue)[0];
+    topBAN = {
+      label: 'Top Sub-Category',
+      value: `${topSub.label}<br><span style="font-size:12px;font-weight:400;">${fmt.currency(topSub.revenue)} · ${fmt.num(topSub.units)} units</span>`,
+      lead: true,
+    };
+  } else {
+    topBAN = { label: 'Top Category', value: catLabels[topCat], lead: true };
+  }
+
   renderBANs('t3-bans', [
     { label: 'Total F&B Revenue',   value: fmt.currency(totalRev) },
     { label: 'Avg Per-Cap Spend',   value: '$' + avgPercap.toFixed(2) },
     { label: 'F&B Attach Rate',     value: fmt.pct(attachRate) },
-    { label: 'Top Category',        value: catLabels[topCat], lead: true },
+    topBAN,
     { label: 'Transactions',        value: fmt.num(totalTx) },
     { label: 'Avg Transaction',     value: '$' + avgTxVal.toFixed(2) },
   ]);
