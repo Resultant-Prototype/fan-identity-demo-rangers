@@ -812,6 +812,7 @@ function renderTab3() {
   // 4th BAN: Top Category (top-level) or Top Sub-Category (drilled in)
   let topBAN;
   if (f.fnbDrilldown) {
+    if (!FNB_SUBCATS[f.fnbDrilldown]) { STATE.tab3.fnbDrilldown = null; renderTab3(); return; }
     const catRevField4 = `${f.fnbDrilldown}_revenue`;
     const catSeasonRev4 = GAME_FNB.reduce((s, r) => s + r[catRevField4], 0);
     const topSub = FNB_SUBCATS[f.fnbDrilldown]
