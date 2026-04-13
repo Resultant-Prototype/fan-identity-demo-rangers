@@ -16,6 +16,8 @@
 
 - **`resetTab` key mapping is fragile** — uses `.replace(/^t\d-/, '')` regex to map select IDs back to STATE keys. Works for all current IDs but would silently break if ID naming diverges. Low risk for this demo.
 
+- **F&B subcategory filter — extend to other charts** — When `fnbDrilldown` is set, Charts 1 (revenue by game), 4 (attach by opponent), and 5 (per-cap by section) still show top-level data. Extend subcategory context to these charts in a future iteration.
+
 ~~- **Logo sizing on narrow viewports**~~ ✓ Fixed — `#logo-area img` capped at `max-width: 120px`.
 
 ~~- **Informational ⓘ tooltips on all chart titles**~~ ✓ Fixed — All 23 chart titles across all 4 tabs now have ⓘ icons with explanatory tooltips using the existing `[data-tooltip]` CSS pattern.
