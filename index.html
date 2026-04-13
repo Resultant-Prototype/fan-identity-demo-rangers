@@ -306,33 +306,33 @@
       <div class="ban-row" id="t1-bans"></div>
       <div class="chart-grid">
         <div class="chart-card">
-          <div class="chart-title">Attendance vs. Tickets Sold by Game</div>
+          <div class="chart-title">Attendance vs. Tickets Sold by Game <span class="chart-info-icon" data-tooltip="Bars = tickets sold per game; line = actual turnstile scans.&#10;Gap between line and bar = no-show count.&#10;Bars shift red/gray when filtering by opponent.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t1-attendanceByGame"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">No-Show Rate by Game</div>
+          <div class="chart-title">No-Show Rate by Game <span class="chart-info-icon" data-tooltip="Bars above the season average are red; below are gray.&#10;Featured games (Astros, Yankees) typically show the lowest no-show rates.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t1-noshowByGame"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Arrival Distribution</div>
+          <div class="chart-title">Arrival Distribution <span class="chart-info-icon" data-tooltip="Share of fans in each pre-game arrival window, averaged by month.&#10;Texas summer heat (Jul–Aug) shifts the pattern toward late and post-pitch arrivals.&#10;Opening Day / early spring shows the most front-loaded arrival curve.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t1-arrivalDist"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">No-Show Rate by Ticket Type</div>
+          <div class="chart-title">No-Show Rate by Ticket Type <span class="chart-info-icon" data-tooltip="Secondary market buyers no-show at ~5–8× the rate of Lone Star Members.&#10;High-value seats frequently go dark — a pricing and resale policy signal.">ⓘ</span></div>
           <div class="chart-container" style="height:200px"><canvas id="t1-noshowByType"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Lone Star Member Scan Rate by Month</div>
+          <div class="chart-title">Lone Star Member Scan Rate by Month <span class="chart-info-icon" data-tooltip="Share of Lone Star Member tickets that were actually scanned at the gate.&#10;Summer dip (Jul–Aug) reflects vacation patterns and Texas heat.&#10;Sustained drop is a re-engagement trigger for the membership team.">ⓘ</span></div>
           <div class="chart-container" style="height:200px"><canvas id="t1-stmScanRate"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Group Scan Distribution</div>
+          <div class="chart-title">Group Scan Distribution <span class="chart-info-icon" data-tooltip="Scan group size at the turnstile (tickets on one scan event).&#10;Groups of 2–3 dominate; solo scans index higher in premium sections.">ⓘ</span></div>
           <div class="chart-container" style="height:200px"><canvas id="t1-groupScanDist"></canvas></div>
         </div>
         <div class="chart-card"></div>
@@ -385,33 +385,33 @@
       </div>
       <div class="chart-grid">
         <div class="chart-card">
-          <div class="chart-title">Tickets Sold by Game</div>
+          <div class="chart-title">Tickets Sold by Game <span class="chart-info-icon" data-tooltip="Total tickets sold per game across all channels.&#10;Color reflects game tier in All Games view; bars highlight when opponent is filtered.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t2-soldByGame"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Revenue by Ticket Type</div>
+          <div class="chart-title">Revenue by Ticket Type <span class="chart-info-icon" data-tooltip="Stacked revenue per game: Lone Star Member (season ticket), single-game, and secondary market.&#10;Secondary and single-game share rises sharply on featured matchups.">ⓘ</span></div>
           <div class="chart-container" style="height:240px"><canvas id="t2-revByType"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Avg Ticket Value by Opponent</div>
+          <div class="chart-title">Avg Ticket Value by Opponent <span class="chart-info-icon" data-tooltip="Average ticket price across all channels per opponent series.&#10;AL rivals (Astros, Mariners) and premium interleague matchups (Yankees, Dodgers) command the highest prices.">ⓘ</span></div>
           <div class="chart-container" style="height:240px"><canvas id="t2-avgValueByOpponent"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Secondary Market Share by Game Tier</div>
+          <div class="chart-title">Secondary Market Share by Game Tier <span class="chart-info-icon" data-tooltip="Percent of tickets entering via secondary market, grouped by game tier.&#10;Featured games attract heavier secondary traffic and typically yield higher premiums.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t2-secondaryByTier"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Purchase Timing — Days in Advance</div>
+          <div class="chart-title">Purchase Timing — Days in Advance <span class="chart-info-icon" data-tooltip="Historical distribution of single-game purchase lead time.&#10;Day-of buyers (0–3 days) are the highest-risk segment for no-shows and last-minute discounting.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t2-purchaseTiming"></canvas></div>
         </div>
       </div>
       <div class="chart-grid">
         <div class="chart-card">
-          <div class="chart-title">Buyers by State — Top 10</div>
+          <div class="chart-title">Buyers by State — Top 10 <span class="chart-info-icon" data-tooltip="Home state of Ticketmaster purchasers for the filtered game set.&#10;Texas dominates the base; out-of-state share rises sharply for featured series.">ⓘ</span></div>
           <div class="chart-container" style="height:200px"><canvas id="t2-buyersByState"></canvas></div>
         </div>
       </div>
@@ -457,27 +457,27 @@
       <div class="ban-row" id="t3-bans"></div>
       <div class="chart-grid">
         <div class="chart-card">
-          <div class="chart-title">F&amp;B Revenue by Game</div>
+          <div class="chart-title">F&amp;B Revenue by Game <span class="chart-info-icon" data-tooltip="Total food &amp; beverage revenue per home game.&#10;Weekend and featured games drive the highest per-cap; day games trail.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t3-revByGame"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Per-Cap Spend by Day Type</div>
+          <div class="chart-title">Per-Cap Spend by Day Type <span class="chart-info-icon" data-tooltip="Average F&amp;B spend per attending fan by game schedule type.&#10;Day games suppress concession visits; weekend nights maximize dwell time and spend.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t3-perCapByDayType"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Revenue by Category over Season</div>
+          <div class="chart-title">Revenue by Category over Season <span class="chart-info-icon" data-tooltip="Monthly F&amp;B revenue split across food, beer/wine, and non-alcoholic.&#10;Beer/wine share peaks in summer; non-alc rises in shoulder months.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t3-revByCatMonth"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">F&amp;B Attach Rate by Opponent</div>
+          <div class="chart-title">F&amp;B Attach Rate by Opponent <span class="chart-info-icon" data-tooltip="Percent of scanned fans who made at least one F&amp;B purchase per game.&#10;Rival games and theme nights show higher attach; day games trail the season average.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t3-attachByOpponent"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Per-Cap Spend by Seating Area</div>
+          <div class="chart-title">Per-Cap Spend by Seating Area <span class="chart-info-icon" data-tooltip="Average F&amp;B spend per fan by seating section.&#10;Premium areas (Lexus Club, Speakeasy) drive 2–3× the upper-deck per-cap.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t3-perCapBySection"></canvas></div>
         </div>
       </div>
@@ -533,33 +533,33 @@
       <div class="ban-row" id="t4-bans"></div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Fan Population Overlap</div>
+          <div class="chart-title">Fan Population Overlap <span class="chart-info-icon" data-tooltip="Venn diagram of overlapping data source populations.&#10;The Gate Scans ∩ F&amp;B segment = 'dark fans' — no Ticketmaster record, invisible to CRM.&#10;P3RL surfaces them through F&amp;B transaction matching.">ⓘ</span></div>
           <div class="chart-container" style="height:260px"><canvas id="t4-venn"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Membership Tier vs. Cross-Channel Spend</div>
+          <div class="chart-title">Membership Tier vs. Cross-Channel Spend <span class="chart-info-icon" data-tooltip="Each point = one linked fan. X = F&amp;B spend, Y = ticket spend.&#10;Color = ticket type. Lone Star Members cluster upper-right; secondary buyers lower-left.">ⓘ</span></div>
           <div class="chart-container" style="height:260px"><canvas id="t4-spendByTier"></canvas></div>
         </div>
       </div>
       <div class="chart-grid">
         <div class="chart-card">
-          <div class="chart-title">Top Decile Fans — Cross-Channel Spend Breakdown</div>
+          <div class="chart-title">Top Decile Fans — Cross-Channel Spend Breakdown <span class="chart-info-icon" data-tooltip="Top 10 linked fans by total cross-channel spend.&#10;Ticket + F&amp;B components stacked; total shown at bar end.&#10;Dashed line = average across all linked fans.">ⓘ</span></div>
           <div class="chart-container" style="height:260px"><canvas id="t4-topDecile"></canvas></div>
         </div>
       </div>
       <div class="chart-grid chart-grid-2">
         <div class="chart-card">
-          <div class="chart-title">Single-Source vs. Linked Fans by Day Type</div>
+          <div class="chart-title">Single-Source vs. Linked Fans by Day Type <span class="chart-info-icon" data-tooltip="Fans seen in only one source system vs. those matched across multiple.&#10;Linked fans enable cross-channel revenue attribution and personalized outreach.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t4-linkedByDayType"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Geographic Distribution — Top 10 States</div>
+          <div class="chart-title">Geographic Distribution — Top 10 States <span class="chart-info-icon" data-tooltip="Home states of linked fans in the current filter view.&#10;Out-of-state fans skew toward premium tickets and featured-game attendance.">ⓘ</span></div>
           <div class="chart-container" style="height:220px"><canvas id="t4-geoBar"></canvas></div>
         </div>
       </div>
       <div class="chart-grid">
         <div class="chart-card">
-          <div class="chart-title">Linked Fan Distribution by State</div>
+          <div class="chart-title">Linked Fan Distribution by State <span class="chart-info-icon" data-tooltip="Choropleth map of linked fan home states.&#10;Texas concentration reflects the local season-ticket base; secondary markets reveal travel-fan patterns.">ⓘ</span></div>
           <div class="map-container" style="height:260px" id="t4-map"></div>
         </div>
       </div>
@@ -2048,7 +2048,8 @@ function renderTab4() {
   renderBANs('t4-bans', [
     { label: 'Cross-Channel Spend / Fan',  value: fmt.currency(Math.round(avgXCS)) },
     { label: '% Scans Matched to Known Fan', value: fmt.pct(pctMatched) },
-    { label: 'Secondary Market Dark Fans', value: String(darkFansCount), lead: true },
+    { label: 'Secondary Market Dark Fans', value: String(darkFansCount), lead: true,
+      tooltip: "Fans matched via Gate Scans + F&B only.\nNo Ticketmaster record — STM utilization is undefined for this segment.\nThese buyers are completely invisible to standard CRM without identity resolution." },
     { label: 'Total Linked Fans',          value: String(linkedFans.length) },
     { label: 'Avg Match Confidence',       value: fmt.pct(avgConf) },
     { label: 'Top Decile Spend Threshold', value: fmt.currency(threshold) },
@@ -2229,6 +2230,26 @@ function renderTab4() {
         y: { stacked: true, grid: { display: false } },
       },
     },
+    plugins: [{
+      id: 'totalBarLabel',
+      afterDraw(chart) {
+        const { ctx, data, chartArea } = chart;
+        const meta1 = chart.getDatasetMeta(1);
+        ctx.save();
+        ctx.font = '600 10px "Lexend Deca", system-ui, sans-serif';
+        ctx.fillStyle = '#374151';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        meta1.data.forEach((bar, i) => {
+          const total = (data.datasets[0].data[i] || 0) + (data.datasets[1].data[i] || 0);
+          const x = bar.x + 5;
+          if (x < chartArea.right - 10) {
+            ctx.fillText(fmt.currency(total), x, bar.y);
+          }
+        });
+        ctx.restore();
+      },
+    }],
   });
 
   // ── Chart 4: Single-Source vs. Linked Fans by Day Type ──

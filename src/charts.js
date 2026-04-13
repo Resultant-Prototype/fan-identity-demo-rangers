@@ -965,7 +965,8 @@ function renderTab4() {
   renderBANs('t4-bans', [
     { label: 'Cross-Channel Spend / Fan',  value: fmt.currency(Math.round(avgXCS)) },
     { label: '% Scans Matched to Known Fan', value: fmt.pct(pctMatched) },
-    { label: 'Secondary Market Dark Fans', value: String(darkFansCount), lead: true },
+    { label: 'Secondary Market Dark Fans', value: String(darkFansCount), lead: true,
+      tooltip: "Fans matched via Gate Scans + F&B only.\nNo Ticketmaster record — STM utilization is undefined for this segment.\nThese buyers are completely invisible to standard CRM without identity resolution." },
     { label: 'Total Linked Fans',          value: String(linkedFans.length) },
     { label: 'Avg Match Confidence',       value: fmt.pct(avgConf) },
     { label: 'Top Decile Spend Threshold', value: fmt.currency(threshold) },
@@ -1146,6 +1147,26 @@ function renderTab4() {
         y: { stacked: true, grid: { display: false } },
       },
     },
+    plugins: [{
+      id: 'totalBarLabel',
+      afterDraw(chart) {
+        const { ctx, data, chartArea } = chart;
+        const meta1 = chart.getDatasetMeta(1);
+        ctx.save();
+        ctx.font = '600 10px "Lexend Deca", system-ui, sans-serif';
+        ctx.fillStyle = '#374151';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        meta1.data.forEach((bar, i) => {
+          const total = (data.datasets[0].data[i] || 0) + (data.datasets[1].data[i] || 0);
+          const x = bar.x + 5;
+          if (x < chartArea.right - 10) {
+            ctx.fillText(fmt.currency(total), x, bar.y);
+          }
+        });
+        ctx.restore();
+      },
+    }],
   });
 
   // ── Chart 4: Single-Source vs. Linked Fans by Day Type ──
