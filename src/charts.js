@@ -908,6 +908,7 @@ function renderTab3() {
     const drillKey    = f.fnbDrilldown;
     const catRevField3 = `${drillKey}_revenue`;
     const catSeasonRev = GAME_FNB.reduce((s, r) => s + r[catRevField3], 0);
+    if (!FNB_SUBCATS[drillKey]) { STATE.tab3.fnbDrilldown = null; renderTab3(); return; }
     const subcats3 = FNB_SUBCATS[drillKey]
       .map(sc => ({
         ...sc,
@@ -916,7 +917,7 @@ function renderTab3() {
       }))
       .sort((a, b) => b.revenue - a.revenue);
 
-    if (titleEl3) titleEl3.firstChild.textContent = `${catLabels[drillKey]} — Subcategory Breakdown `;
+    if (titleEl3) { const tn = [...titleEl3.childNodes].find(n => n.nodeType === Node.TEXT_NODE); if (tn) tn.textContent = `${catLabels[drillKey]} — Subcategory Breakdown `; }
     if (backDiv3) backDiv3.style.display = '';
 
     CHARTS['t3-revByCatMonth'] = new Chart(document.getElementById('t3-revByCatMonth'), {
@@ -953,7 +954,7 @@ function renderTab3() {
 
   } else {
     // ── Top-level state: stacked bar by month ──
-    if (titleEl3) titleEl3.firstChild.textContent = 'Revenue by Category over Season ';
+    if (titleEl3) { const tn = [...titleEl3.childNodes].find(n => n.nodeType === Node.TEXT_NODE); if (tn) tn.textContent = 'Revenue by Category over Season '; }
     if (backDiv3) backDiv3.style.display = 'none';
 
     const months3     = [...new Set(GAMES.map(g => g.month))].sort((a, b) => a - b);
