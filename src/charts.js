@@ -223,7 +223,11 @@ function renderTab1() {
               const g = tlGames[items[0]?.dataIndex];
               return g ? `${g.date} vs. ${g.opponent}` : '';
             },
-            label: ctx => `No-show: ${fmt.pct(ctx.raw)}`,
+            label: ctx => {
+              const diff = ctx.raw - seasonAvgNoShow;
+              const sign = diff >= 0 ? '+' : '−';
+              return `No-show: ${fmt.pct(ctx.raw)}  (${sign}${fmt.pct(Math.abs(diff))} vs. avg)`;
+            },
           },
         },
       },
@@ -263,7 +267,18 @@ function renderTab1() {
       data: { labels: monthLabels3, datasets: arrDatasets3 },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom' } },
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              title: items => {
+                const m = months[items[0]?.dataIndex];
+                return monthNames[m] + ' — Arrival Distribution';
+              },
+              label: ctx => `${ctx.dataset.label}: ${fmt.pct(ctx.raw)}`,
+            },
+          },
+        },
         scales: {
           x: { stacked: true, grid: { display: false } },
           y: { stacked: true, ticks: { callback: v => fmt.pct(v) }, max: 1 },
@@ -357,7 +372,23 @@ function renderTab1() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => {
+              const m = months5[items[0]?.dataIndex];
+              return monthNames5[m] + ' — Lone Star Member Scan Rate';
+            },
+            label: ctx => {
+              const avg = stmByMonth.reduce((a, b) => a + b, 0) / (stmByMonth.length || 1);
+              const diff = ctx.raw - avg;
+              const sign = diff >= 0 ? '+' : '−';
+              return [`${fmt.pct(ctx.raw)} scan rate`, `${sign}${fmt.pct(Math.abs(diff))} vs. season avg`];
+            },
+          },
+        },
+      },
       scales: {
         x: { grid: { display: false } },
         y: { ticks: { callback: v => fmt.pct(v) }, min: 0.80, max: 1.0 },
@@ -493,7 +524,15 @@ function renderTab2() {
         tooltip: {
           callbacks: {
             title: items => { const g = sortedGames2[items[0]?.dataIndex]; return g ? `${g.date} vs. ${g.opponent}` : ''; },
-            footer: () => ['Secondary market revenue is estimated from scan matching — Rangers do not capture this directly'],
+            label: ctx => {
+              const i = ctx.dataIndex;
+              const t = tlTickets2.find(r => r.game_id === sortedGames2[i]?.id);
+              if (!t) return fmt.currency(ctx.raw);
+              const total = t.stm_revenue + t.single_revenue + t.secondary_revenue;
+              const pct = total > 0 ? fmt.pct(ctx.raw / total) : '';
+              return `${ctx.dataset.label}: ${fmt.currency(ctx.raw)}  (${pct})`;
+            },
+            footer: () => ['Secondary market revenue is estimated from scan matching'],
           },
         },
       },
@@ -531,7 +570,14 @@ function renderTab2() {
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '$' + ctx.raw } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => {
+          const avg = Math.round(oppSorted.reduce((s, d) => s + d.avg, 0) / (oppSorted.length || 1));
+          const diff = ctx.raw - avg;
+          const sign = diff >= 0 ? '+' : '−';
+          return [`Avg: ${fmt.currency(ctx.raw)}`, `${sign}$${Math.abs(Math.round(diff))} vs. opponent avg`];
+        },
+      }}},
       scales: { x: { ticks: { callback: v => '$' + v } }, y: { ticks: { font: { size: 11 } }, grid: { display: false } } },
     },
   });
@@ -554,7 +600,14 @@ function renderTab2() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt.pct(ctx.raw) } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => {
+          const seasonAvg = fTickets.reduce((s, r) => s + r.secondary_market_share, 0) / (fTickets.length || 1);
+          const diff = ctx.raw - seasonAvg;
+          const sign = diff >= 0 ? '+' : '−';
+          return [`Secondary share: ${fmt.pct(ctx.raw)}`, `${sign}${fmt.pct(Math.abs(diff))} vs. season avg`];
+        },
+      }}},
       scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => fmt.pct(v) } } },
     },
   });
@@ -713,7 +766,12 @@ function renderTab2() {
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => {
+          const total = stateSorted.reduce((s, [, v]) => s + v, 0);
+          return `${fmt.num(ctx.raw)} buyers — ${fmt.pct(ctx.raw / total)} of total`;
+        },
+      }}},
       scales: { x: { ticks: { callback: v => fmt.num(v) } }, y: { grid: { display: false } } },
     },
   });
@@ -792,6 +850,12 @@ function renderTab3() {
         tooltip: { callbacks: {
           title: items => { const g = tlGames3[items[0]?.dataIndex]; return g ? `${g.date} vs. ${g.opponent}` : ''; },
           label: ctx => fmt.currency(ctx.raw),
+          afterBody: items => {
+            const i = items[0]?.dataIndex;
+            const fnb = tlFnb3.find(r => r.game_id === tlGames3[i]?.id);
+            if (!fnb) return [];
+            return [`Per-cap: $${fnb.avg_per_cap.toFixed(2)}  ·  Attach: ${fmt.pct(fnb.fnb_attach_rate)}`];
+          },
         }},
       },
       scales: { x: { ticks: { maxTicksLimit: 12 }, grid: { display: false } }, y: { ticks: { callback: v => fmt.currency(v) } } },
@@ -819,7 +883,15 @@ function renderTab3() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '$' + ctx.raw.toFixed(2) } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => {
+          const validVals = percapByDayType.filter(v => v > 0);
+          const avg = validVals.reduce((a, b) => a + b, 0) / (validVals.length || 1);
+          const diff = ctx.raw - avg;
+          const sign = diff >= 0 ? '+' : '−';
+          return [`$${ctx.raw.toFixed(2)} per cap`, `${sign}$${Math.abs(diff).toFixed(2)} vs. day-type avg`];
+        },
+      }}},
       scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => '$' + v.toFixed(0) } } },
     },
   });
@@ -843,7 +915,20 @@ function renderTab3() {
     data: { labels: months3.map(m => monthNames3[m]), datasets: catDatasets3 },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            title: items => monthNames3[months3[items[0]?.dataIndex]] + ' — F&B Revenue by Category',
+            label: ctx => {
+              const i = ctx.dataIndex;
+              const monthTotal = catDatasets3.reduce((s, ds) => s + (ds.data[i] || 0), 0);
+              const pct = monthTotal > 0 ? fmt.pct(ctx.raw / monthTotal) : '';
+              return `${ctx.dataset.label}: ${fmt.currency(ctx.raw)}  (${pct})`;
+            },
+          },
+        },
+      },
       scales: {
         x: { stacked: true, grid: { display: false } },
         y: { stacked: true, ticks: { callback: v => fmt.currency(v) } },
@@ -875,7 +960,14 @@ function renderTab3() {
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt.pct(ctx.raw) } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => {
+          const avg = oppAttachSorted.reduce((s, d) => s + d.avg, 0) / (oppAttachSorted.length || 1);
+          const diff = ctx.raw - avg;
+          const sign = diff >= 0 ? '+' : '−';
+          return [`Attach: ${fmt.pct(ctx.raw)}`, `${sign}${fmt.pct(Math.abs(diff))} vs. opponent avg`];
+        },
+      }}},
       scales: { x: { ticks: { callback: v => fmt.pct(v) } }, y: { ticks: { font: { size: 11 } }, grid: { display: false } } },
     },
   });
@@ -932,7 +1024,13 @@ function renderTab3() {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => '$' + ctx.raw.toFixed(2) + ' per visit' } },
+        tooltip: { callbacks: {
+          label: ctx => {
+            const avgAll = sectionData.reduce((s, d) => s + d.val, 0) / (sectionData.length || 1);
+            const mult = avgAll > 0 ? (ctx.raw / avgAll).toFixed(1) : '—';
+            return [`$${ctx.raw.toFixed(2)} per visit`, `${mult}× section average`];
+          },
+        }},
       },
       scales: {
         x: { grid: { display: false }, ticks: { maxRotation: 20 } },
@@ -1014,10 +1112,18 @@ function renderTab4() {
         tooltip: {
           callbacks: {
             label: ctx => {
-              if (ctx.raw.sets.join('|') === 'Gate Scans|F&B') {
-                return [`${ctx.raw.value} fans — secondary market buyers`, 'No Ticketmaster record — invisible to CRM', 'Surfaced by P3RL through F&B matching'];
-              }
-              return `${ctx.raw.value} fans`;
+              const key = ctx.raw.sets.join('|');
+              const n = ctx.raw.value;
+              const map = {
+                'Ticketmaster':                [`${n} fans — ticket record only`, 'No scan or F&B data — attendance and spend unknown'],
+                'Gate Scans':                  [`${n} fans — gate scan only`, 'Attended but left no ticket or purchase trail'],
+                'F&B':                         [`${n} fans — F&B purchase only`, 'No ticket or scan record — origin unknown'],
+                'Ticketmaster|Gate Scans':     [`${n} fans — ticketed + confirmed attendee`, 'F&B spend not linked to this identity'],
+                'Ticketmaster|F&B':            [`${n} fans — ticketed + F&B buyer`, 'Scan not linked — may have used mobile entry'],
+                'Gate Scans|F&B':              [`${n} fans — secondary market buyers (dark fans)`, 'No Ticketmaster record — invisible to CRM', 'Surfaced only through P3RL gate + F&B matching'],
+                'Ticketmaster|Gate Scans|F&B': [`${n} fans — fully linked across all three systems`, 'Highest-confidence profiles — complete attendance + spend record'],
+              };
+              return map[key] || `${n} fans`;
             },
           },
         },
@@ -1086,7 +1192,16 @@ function renderTab4() {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { position: 'bottom' },
-        tooltip: { callbacks: { label: ctx => fmt.currency(ctx.raw.y) } },
+        tooltip: {
+          mode: 'nearest',
+          intersect: true,
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.label === 'Tier Mean') return null;
+              return `${ctx.dataset.label}: ${fmt.currency(ctx.raw.y)} total spend`;
+            },
+          },
+        },
       },
       scales: {
         x: {
@@ -1135,9 +1250,20 @@ function renderTab4() {
         },
         tooltip: {
           callbacks: {
+            title: items => {
+              const fan = top10[items[0]?.dataIndex];
+              if (!fan) return '';
+              const tier = fan.ticket_type === 'lone_star' ? 'Lone Star Member' : fan.ticket_type === 'single_game' ? 'Single Game' : 'Secondary Market';
+              return `${tier} · ${fan.seat_section || '—'} · ${fan.home_state || '—'}`;
+            },
             afterBody: items => {
               const fan = top10[items[0]?.dataIndex];
-              return fan ? [`Total: ${fmt.currency(fan.total_cross_channel_spend)}`] : [];
+              if (!fan) return [];
+              return [
+                `Tickets: ${fmt.currency(fan.ticket_spend || 0)}`,
+                `F&B:     ${fmt.currency(fan.fnb_spend || 0)}`,
+                `Total:   ${fmt.currency(fan.total_cross_channel_spend)}`,
+              ];
             },
           },
         },
@@ -1187,7 +1313,25 @@ function renderTab4() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const i = ctx.dataIndex;
+              const total = (linkedByDt[i] || 0) + (unlinkedByDt[i] || 0);
+              const pct = total > 0 ? fmt.pct(ctx.raw / total) : '';
+              return `${ctx.dataset.label}: ${fmt.num(ctx.raw)}  (${pct})`;
+            },
+            footer: items => {
+              const i = items[0]?.dataIndex;
+              const total = (linkedByDt[i] || 0) + (unlinkedByDt[i] || 0);
+              const rate = total > 0 ? fmt.pct(linkedByDt[i] / total) : '—';
+              return [`Link rate: ${rate}`];
+            },
+          },
+        },
+      },
       scales: {
         x: { stacked: true, grid: { display: false } },
         y: { stacked: true },
@@ -1212,7 +1356,12 @@ function renderTab4() {
     },
     options: {
       indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => {
+          const total = geoSorted.reduce((s, [, v]) => s + v, 0);
+          return `${fmt.num(ctx.raw)} linked fans  (${fmt.pct(ctx.raw / total)} of total)`;
+        },
+      }}},
       scales: { x: { ticks: { callback: v => fmt.num(v) } }, y: { grid: { display: false } } },
     },
   });
