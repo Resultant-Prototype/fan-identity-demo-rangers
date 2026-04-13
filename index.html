@@ -467,7 +467,8 @@
           <div class="chart-container" style="height:220px"><canvas id="t3-perCapByDayType"></canvas></div>
         </div>
         <div class="chart-card">
-          <div class="chart-title">Revenue by Category over Season <span class="chart-info-icon" data-tooltip="Monthly F&amp;B revenue split across food, beer/wine, and non-alcoholic.&#10;Beer/wine share peaks in summer; non-alc rises in shoulder months.">ⓘ</span></div>
+          <div class="chart-title" id="t3-catMonth-title">Revenue by Category over Season <span class="chart-info-icon" data-tooltip="Monthly F&amp;B revenue split across food, beer/wine, and non-alcoholic.&#10;Beer/wine share peaks in summer; non-alc rises in shoulder months.&#10;Click a category bar to drill into subcategories.">ⓘ</span></div>
+          <div id="t3-drilldown-back" style="display:none;margin-bottom:6px;"><a href="#" id="t3-back-link" style="font-size:12px;color:#4A87C8;text-decoration:none;">&#8592; All Categories</a></div>
           <div class="chart-container" style="height:220px"><canvas id="t3-revByCatMonth"></canvas></div>
         </div>
       </div>
@@ -840,6 +841,31 @@ console.assert(GAME_FNB.length === 81, 'GAME_FNB row count');
 const totalFnBRev = GAME_FNB.reduce((s, r) => s + r.total_revenue, 0);
 console.log('GAME DATA OK — FnB season total $' + (totalFnBRev / 1e6).toFixed(1) + 'M');
 
+// ── FNB_SUBCATS — subcategory revenue shares and avg unit prices ──
+// share: fraction of parent category season revenue
+// avg_price: used to derive unit count = Math.round(revenue / avg_price)
+const FNB_SUBCATS = {
+  food: [
+    { key: 'hot_dogs',        label: 'Hot Dogs',                share: 0.28, avg_price: 8.50  },
+    { key: 'nachos_tex_mex',  label: 'Nachos & Tex-Mex',        share: 0.24, avg_price: 11.00 },
+    { key: 'bbq_sandwiches',  label: 'BBQ & Sandwiches',        share: 0.20, avg_price: 14.00 },
+    { key: 'pizza',           label: 'Pizza',                   share: 0.15, avg_price: 9.50  },
+    { key: 'desserts_snacks', label: 'Desserts & Snacks',       share: 0.13, avg_price: 6.00  },
+  ],
+  beer_wine: [
+    { key: 'domestic_beer',   label: 'Domestic Beer',           share: 0.42, avg_price: 10.00 },
+    { key: 'craft_beer',      label: 'Craft Beer',              share: 0.31, avg_price: 13.00 },
+    { key: 'hard_seltzer',    label: 'Hard Seltzer',            share: 0.14, avg_price: 11.00 },
+    { key: 'wine',            label: 'Wine',                    share: 0.13, avg_price: 12.00 },
+  ],
+  non_alc: [
+    { key: 'fountain_soda',   label: 'Fountain Soda',           share: 0.38, avg_price: 5.50  },
+    { key: 'bottled_water',   label: 'Bottled Water',           share: 0.27, avg_price: 4.50  },
+    { key: 'lemonade',        label: 'Lemonade',                share: 0.18, avg_price: 6.00  },
+    { key: 'dirty_mocktails', label: 'Dirty Sodas & Mocktails', share: 0.17, avg_price: 8.00  },
+  ],
+};
+
 // ── Fan Records — 500 fans across 3 source systems ──────────────
 // Ticketmaster (TICKET) · MLB Ballpark App / Gate Scan (SCAN) · Delaware North F&B (FNB)
 
@@ -982,7 +1008,7 @@ const STATE = {
   showSeasonAvg: true,        // global toggle — only relevant when opponent !== 'all'
   tab1: { dateRange: 'full_season', dayType: 'all', promo: 'all' },
   tab2: { dateRange: 'full_season', dayType: 'all', ticketType: 'all' },
-  tab3: { dateRange: 'full_season', dayType: 'all', fnbCategory: 'all' },
+  tab3: { dateRange: 'full_season', dayType: 'all', fnbCategory: 'all', fnbDrilldown: null },
   tab4: { dateRange: 'full_season', segment: 'all_linked', linkedStatus: 'linked_only' },
 };
 
@@ -1892,11 +1918,29 @@ function renderTab3() {
   const topCat = Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0]?.[0] || 'food';
   const catLabels = { food: 'Food', beer_wine: 'Beer & Wine', non_alc: 'Non-Alcoholic' };
 
+  // 4th BAN: Top Category (top-level) or Top Sub-Category (drilled in)
+  let topBAN;
+  if (f.fnbDrilldown) {
+    if (!FNB_SUBCATS[f.fnbDrilldown]) { STATE.tab3.fnbDrilldown = null; renderTab3(); return; }
+    const catRevField4 = `${f.fnbDrilldown}_revenue`;
+    const catSeasonRev4 = GAME_FNB.reduce((s, r) => s + r[catRevField4], 0);
+    const topSub = FNB_SUBCATS[f.fnbDrilldown]
+      .map(sc => ({ ...sc, revenue: Math.round(catSeasonRev4 * sc.share), units: Math.round(catSeasonRev4 * sc.share / sc.avg_price) }))
+      .sort((a, b) => b.revenue - a.revenue)[0];
+    topBAN = {
+      label: 'Top Sub-Category',
+      value: `${topSub.label}<br><span style="font-size:12px;font-weight:400;">${fmt.currency(topSub.revenue)} · ${fmt.num(topSub.units)} units</span>`,
+      lead: true,
+    };
+  } else {
+    topBAN = { label: 'Top Category', value: catLabels[topCat], lead: true };
+  }
+
   renderBANs('t3-bans', [
     { label: 'Total F&B Revenue',   value: fmt.currency(totalRev) },
     { label: 'Avg Per-Cap Spend',   value: '$' + avgPercap.toFixed(2) },
     { label: 'F&B Attach Rate',     value: fmt.pct(attachRate) },
-    { label: 'Top Category',        value: catLabels[topCat], lead: true },
+    topBAN,
     { label: 'Transactions',        value: fmt.num(totalTx) },
     { label: 'Avg Transaction',     value: '$' + avgTxVal.toFixed(2) },
   ]);
@@ -1981,45 +2025,110 @@ function renderTab3() {
     },
   });
 
-  // ── Chart 3: Revenue by Category over Season (stacked bar by month) ──
+  // ── Chart 3: Revenue by Category / Subcategory Drill-Down ──
   destroyChart('t3-revByCatMonth');
-  const months3  = [...new Set(GAMES.map(g => g.month))].sort((a, b) => a - b);
-  const monthNames3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const catColors3 = { food: PALETTE.navy, beer_wine: PALETTE.navySoft, non_alc: PALETTE.gray };
-  const catDatasets3 = ['food', 'beer_wine', 'non_alc'].map(cat => ({
-    label: catLabels[cat],
-    data: months3.map(m => {
-      const rows = GAME_FNB.filter(r => GAME_BY_ID[r.game_id]?.month === m);
-      return rows.reduce((s, r) => s + r[`${cat}_revenue`], 0);
-    }),
-    backgroundColor: catColors3[cat],
-  }));
+  const titleEl3 = document.getElementById('t3-catMonth-title');
+  const backDiv3 = document.getElementById('t3-drilldown-back');
 
-  CHARTS['t3-revByCatMonth'] = new Chart(document.getElementById('t3-revByCatMonth'), {
-    type: 'bar',
-    data: { labels: months3.map(m => monthNames3[m]), datasets: catDatasets3 },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom' },
-        tooltip: {
-          callbacks: {
-            title: items => monthNames3[months3[items[0]?.dataIndex]] + ' — F&B Revenue by Category',
-            label: ctx => {
-              const i = ctx.dataIndex;
-              const monthTotal = catDatasets3.reduce((s, ds) => s + (ds.data[i] || 0), 0);
-              const pct = monthTotal > 0 ? fmt.pct(ctx.raw / monthTotal) : '';
-              return `${ctx.dataset.label}: ${fmt.currency(ctx.raw)}  (${pct})`;
+  if (f.fnbDrilldown) {
+    // ── Drill-down state: horizontal bar of subcategories ──
+    const drillKey    = f.fnbDrilldown;
+    const catRevField3 = `${drillKey}_revenue`;
+    const catSeasonRev = GAME_FNB.reduce((s, r) => s + r[catRevField3], 0);
+    if (!FNB_SUBCATS[drillKey]) { STATE.tab3.fnbDrilldown = null; renderTab3(); return; }
+    const subcats3 = FNB_SUBCATS[drillKey]
+      .map(sc => ({
+        ...sc,
+        revenue: Math.round(catSeasonRev * sc.share),
+        units:   Math.round(catSeasonRev * sc.share / sc.avg_price),
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    if (titleEl3) { const tn = [...titleEl3.childNodes].find(n => n.nodeType === Node.TEXT_NODE); if (tn) tn.textContent = `${catLabels[drillKey]} — Subcategory Breakdown `; }
+    if (backDiv3) backDiv3.style.display = '';
+
+    CHARTS['t3-revByCatMonth'] = new Chart(document.getElementById('t3-revByCatMonth'), {
+      type: 'bar',
+      data: {
+        labels: subcats3.map(sc => sc.label),
+        datasets: [{
+          label: 'Season Revenue',
+          data:  subcats3.map(sc => sc.revenue),
+          backgroundColor: subcats3.map((_, i) => i === 0 ? PALETTE.red : PALETTE.navy),
+          borderRadius: 3,
+        }],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: {
+            title: items => subcats3[items[0]?.dataIndex]?.label || '',
+            label: ctx  => fmt.currency(ctx.raw),
+            afterBody: items => {
+              const sc = subcats3[items[0]?.dataIndex];
+              return sc ? [`${fmt.num(sc.units)} units`] : [];
+            },
+          }},
+        },
+        scales: {
+          x: { ticks: { callback: v => fmt.currency(v) }, grid: { display: false } },
+          y: { grid: { display: false } },
+        },
+      },
+    });
+
+  } else {
+    // ── Top-level state: stacked bar by month ──
+    if (titleEl3) { const tn = [...titleEl3.childNodes].find(n => n.nodeType === Node.TEXT_NODE); if (tn) tn.textContent = 'Revenue by Category over Season '; }
+    if (backDiv3) backDiv3.style.display = 'none';
+
+    const months3     = [...new Set(GAMES.map(g => g.month))].sort((a, b) => a - b);
+    const monthNames3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const catColors3  = { food: PALETTE.navy, beer_wine: PALETTE.navySoft, non_alc: PALETTE.gray };
+    const catDatasets3 = ['food', 'beer_wine', 'non_alc'].map(cat => ({
+      label: catLabels[cat],
+      data: months3.map(m => {
+        const rows = GAME_FNB.filter(r => GAME_BY_ID[r.game_id]?.month === m);
+        return rows.reduce((s, r) => s + r[`${cat}_revenue`], 0);
+      }),
+      backgroundColor: catColors3[cat],
+    }));
+
+    CHARTS['t3-revByCatMonth'] = new Chart(document.getElementById('t3-revByCatMonth'), {
+      type: 'bar',
+      data: { labels: months3.map(m => monthNames3[m]), datasets: catDatasets3 },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        onClick: (e, _elements, chart) => {
+          const els = chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+          if (!els.length) return;
+          const catKeys = ['food', 'beer_wine', 'non_alc'];
+          const clicked = catKeys[els[0].datasetIndex];
+          if (clicked) { STATE.tab3.fnbDrilldown = clicked; renderTab3(); }
+        },
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              title: items => monthNames3[months3[items[0]?.dataIndex]] + ' — F&B Revenue by Category',
+              label: ctx => {
+                const i = ctx.dataIndex;
+                const monthTotal = catDatasets3.reduce((s, ds) => s + (ds.data[i] || 0), 0);
+                const pct = monthTotal > 0 ? fmt.pct(ctx.raw / monthTotal) : '';
+                return `${ctx.dataset.label}: ${fmt.currency(ctx.raw)}  (${pct})`;
+              },
             },
           },
         },
+        scales: {
+          x: { stacked: true, grid: { display: false } },
+          y: { stacked: true, ticks: { callback: v => fmt.currency(v) } },
+        },
       },
-      scales: {
-        x: { stacked: true, grid: { display: false } },
-        y: { stacked: true, ticks: { callback: v => fmt.currency(v) } },
-      },
-    },
-  });
+    });
+  }
 
   // ── Chart 4: F&B Attach Rate by Opponent (horizontal bar, all opponents, sorted) ──
   destroyChart('t3-attachByOpponent');
@@ -2569,6 +2678,12 @@ wireFilter('t3-dateRange',   'tab3', 'dateRange');
 wireFilter('t3-dayType',     'tab3', 'dayType');
 wireFilter('t3-fnbCategory', 'tab3', 'fnbCategory');
 
+document.getElementById('t3-back-link').addEventListener('click', e => {
+  e.preventDefault();
+  STATE.tab3.fnbDrilldown = null;
+  renderTab3();
+});
+
 // Tab 4 — Fan Identity
 wireFilter('t4-dateRange',    'tab4', 'dateRange');
 wireFilter('t4-segment',      'tab4', 'segment');
@@ -2580,7 +2695,7 @@ wireFilter('t4-linkedStatus', 'tab4', 'linkedStatus');
 const TAB_DEFAULTS = {
   tab1: { dateRange: 'full_season', dayType: 'all', promo: 'all' },
   tab2: { dateRange: 'full_season', dayType: 'all', ticketType: 'all' },
-  tab3: { dateRange: 'full_season', dayType: 'all', fnbCategory: 'all' },
+  tab3: { dateRange: 'full_season', dayType: 'all', fnbCategory: 'all', fnbDrilldown: null },
   tab4: { dateRange: 'full_season', segment: 'all_linked', linkedStatus: 'linked_only' },
 };
 
