@@ -36,6 +36,8 @@
 
 ## Tooltip Quality Audit (high priority before live demo)
 
+- **ⓘ chart title tooltip accuracy review** — The info tooltips added to all 23 chart titles were written generically and some describe things that don't match the actual chart. Example: Ticket Pacing ⓘ says "Color: green = on/above target · amber = within 10 pts · red = at risk" — but the chart uses Rangers Navy (blue) and Rangers Red, not green and amber. Every ⓘ tooltip needs to be read against the live chart and corrected so the colors, labels, and interactions described match what the viewer is actually seeing. Low effort per tooltip, but requires opening each tab and cross-checking carefully.
+
 - **Full hover tooltip review using frontend-design skill** — Every chart tooltip needs to earn its place. Right now many tooltips just echo the y-axis value (e.g., Membership Tier scatter shows a list of `$1K / $1K / $960 / $930…` for nearby points — zero signal). Use the `frontend-design` skill to go chart by chart and rewrite tooltips so they surface insight that isn't visible on the chart face itself: context, comparison, narrative hook, or actionable interpretation. Tooltip content should answer "so what?" not just "what."
 
   Priority targets (worst offenders):
