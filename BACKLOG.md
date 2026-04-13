@@ -36,20 +36,9 @@
 
 ## Tooltip Quality Audit (high priority before live demo)
 
-- **ⓘ chart title tooltip accuracy review** — The info tooltips added to all 23 chart titles were written generically and some describe things that don't match the actual chart. Example: Ticket Pacing ⓘ says "Color: green = on/above target · amber = within 10 pts · red = at risk" — but the chart uses Rangers Navy (blue) and Rangers Red, not green and amber. Every ⓘ tooltip needs to be read against the live chart and corrected so the colors, labels, and interactions described match what the viewer is actually seeing. Low effort per tooltip, but requires opening each tab and cross-checking carefully.
+~~- **ⓘ chart title tooltip accuracy review**~~ ✓ Fixed — Ticket Pacing colors corrected (blue/gray/red not green/amber/red). Membership Tier scatter axes corrected (X = tier, Y = total spend). All 23 ⓘ tooltips verified against live chart implementations.
 
-- **Full hover tooltip review using frontend-design skill** — Every chart tooltip needs to earn its place. Right now many tooltips just echo the y-axis value (e.g., Membership Tier scatter shows a list of `$1K / $1K / $960 / $930…` for nearby points — zero signal). Use the `frontend-design` skill to go chart by chart and rewrite tooltips so they surface insight that isn't visible on the chart face itself: context, comparison, narrative hook, or actionable interpretation. Tooltip content should answer "so what?" not just "what."
-
-  Priority targets (worst offenders):
-  - **Membership Tier scatter** — raw spend values for clustered points; should show tier + section + spend breakdown (this is also tracked under Feature Ideas)
-  - **Attendance vs. Tickets Sold** — tooltip should include opponent name, game tier, and promo label if present
-  - **No-Show Rate by Game** — should call out whether the game was above/below average and by how much
-  - **F&B Revenue by Game** — should include per-cap and attach rate, not just total revenue
-  - **Arrival Distribution (opponent mode)** — should compare the opponent's arrival profile vs. season avg in words, not just show bucket fractions
-  - **Revenue by Ticket Type** — stacked bar tooltip should show channel mix % alongside dollar values
-  - **Geo bar / choropleth** — state tooltip should include % of total, not just count
-
-  Approach: invoke `frontend-design` skill, review each tab's charts.js tooltip callbacks, rewrite for demo narrative quality.
+~~- **Full hover tooltip review using frontend-design skill**~~ ✓ Fixed — All 17 hover tooltip callbacks rewritten. Every tooltip now surfaces comparative insight (±diff vs. avg, % of total, multipliers, narrative context) rather than echoing the axis value. Membership Tier scatter fixed to nearest+intersect mode. Venn diagram expanded to describe all 7 segments. Top Decile title now shows tier + section + state.
 
 ## Feature Ideas
 
