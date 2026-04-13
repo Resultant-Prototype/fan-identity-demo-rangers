@@ -877,7 +877,7 @@ function renderTab3() {
             const fnb = tlFnb3.find(r => r.game_id === tlGames3[i]?.id);
             if (!fnb) return [];
             if (f.fnbDrilldown) {
-              const catPerCap = fnb.avg_per_cap * (fnb[drillRevField] / fnb.total_revenue);
+              const catPerCap = fnb.total_revenue > 0 ? fnb.avg_per_cap * (fnb[drillRevField] / fnb.total_revenue) : 0;
               const catShare  = fnb.total_revenue > 0 ? fnb[drillRevField] / fnb.total_revenue : 0;
               return [`${catLabels[f.fnbDrilldown]} per-cap: $${catPerCap.toFixed(2)}  ·  ${fmt.pct(catShare)} of game F&B`];
             }
