@@ -34,7 +34,7 @@
 
 ~~- **LSM Scan Rate flatlines**~~ ✓ Fixed — `STM_NS_MONTHLY` replaces flat base. Lone Star scan rate now ranges ~92% (Aug) to ~98.5% (Mar/Apr), ~6–7pt seasonal swing on the line chart.
 
-- **Food subcategories (hot dogs, beer)** — The F&B tab only shows Food / Beer & Wine / Non-Alcoholic. Rangers front office will ask about specific items. Consider adding sub-category breakdown (hot dogs, nachos, domestic beer, premium beer) either as a separate chart or as tooltip drill-down on the category chart.
+~~- **Food subcategories (hot dogs, beer)**~~ ✓ Fixed — Chart 3 (Revenue by Category) now supports click-through drill-down to subcategories (Hot Dogs, Nachos & Tex-Mex, BBQ & Sandwiches, Pizza, Desserts & Snacks; Domestic Beer, Craft Beer, Hard Seltzer, Wine; Fountain Soda, Bottled Water, Lemonade, Dirty Sodas & Mocktails). Horizontal bar shows season revenue + unit count per subcategory. Top Category BAN updates to Top Sub-Category with dollar amount and units.
 
 ## Tooltip Quality Audit (high priority before live demo)
 
