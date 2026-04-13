@@ -703,9 +703,33 @@ function renderTab2() {
     },
   };
 
+  const barInBarPlugin = {
+    id: 't2PacingTarget',
+    beforeDatasetsDraw(chart) {
+      const { ctx, scales } = chart;
+      const meta = chart.getDatasetMeta(0);
+      meta.data.forEach((bar, i) => {
+        const target = upcomingPacing[i].target;
+        const x0   = scales.x.getPixelForValue(0);
+        const xT   = scales.x.getPixelForValue(target);
+        const halfH = bar.height / 2;
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.07)';
+        ctx.fillRect(x0, bar.y - halfH, xT - x0, bar.height);
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(xT, bar.y - halfH);
+        ctx.lineTo(xT, bar.y + halfH);
+        ctx.stroke();
+        ctx.restore();
+      });
+    },
+  };
+
   CHARTS['t2-ticketPacing'] = new Chart(document.getElementById('t2-ticketPacing'), {
     type: 'bar',
-    plugins: [pacingLabelPlugin],
+    plugins: [barInBarPlugin, pacingLabelPlugin],
     data: {
       labels: upcomingPacing.map(x => x.label),
       datasets: [{ label: '% Sold', data: upcomingPacing.map(x => x.pctSold),
@@ -726,24 +750,6 @@ function renderTab2() {
                 `  Gap: ${d.gap > 0 ? '+' : ''}${d.gap} pts  ${statusLabel}`,
                 `  ${d.daysUntil} days to game`,
               ];
-            },
-          },
-        },
-        annotation: {
-          annotations: {
-            floor70: {
-              type: 'line', scaleID: 'x', value: 70,
-              borderColor: '#8B96A5', borderWidth: 1.5, borderDash: [4, 3],
-              label: { display: true, content: 'Day 4 floor (70%)', position: 'end',
-                       font: { size: 9 }, color: '#8B96A5',
-                       backgroundColor: 'rgba(255,255,255,0.85)', padding: { x: 3, y: 2 } },
-            },
-            target78: {
-              type: 'line', scaleID: 'x', value: 78,
-              borderColor: '#4A7FC1', borderWidth: 1.5, borderDash: [4, 3],
-              label: { display: true, content: 'Day 17 target (78%)', position: 'end',
-                       font: { size: 9 }, color: '#4A7FC1',
-                       backgroundColor: 'rgba(255,255,255,0.85)', padding: { x: 3, y: 2 } },
             },
           },
         },
