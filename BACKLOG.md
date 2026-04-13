@@ -34,6 +34,21 @@
 
 - **Food subcategories (hot dogs, beer)** — The F&B tab only shows Food / Beer & Wine / Non-Alcoholic. Rangers front office will ask about specific items. Consider adding sub-category breakdown (hot dogs, nachos, domestic beer, premium beer) either as a separate chart or as tooltip drill-down on the category chart.
 
+## Tooltip Quality Audit (high priority before live demo)
+
+- **Full hover tooltip review using frontend-design skill** — Every chart tooltip needs to earn its place. Right now many tooltips just echo the y-axis value (e.g., Membership Tier scatter shows a list of `$1K / $1K / $960 / $930…` for nearby points — zero signal). Use the `frontend-design` skill to go chart by chart and rewrite tooltips so they surface insight that isn't visible on the chart face itself: context, comparison, narrative hook, or actionable interpretation. Tooltip content should answer "so what?" not just "what."
+
+  Priority targets (worst offenders):
+  - **Membership Tier scatter** — raw spend values for clustered points; should show tier + section + spend breakdown (this is also tracked under Feature Ideas)
+  - **Attendance vs. Tickets Sold** — tooltip should include opponent name, game tier, and promo label if present
+  - **No-Show Rate by Game** — should call out whether the game was above/below average and by how much
+  - **F&B Revenue by Game** — should include per-cap and attach rate, not just total revenue
+  - **Arrival Distribution (opponent mode)** — should compare the opponent's arrival profile vs. season avg in words, not just show bucket fractions
+  - **Revenue by Ticket Type** — stacked bar tooltip should show channel mix % alongside dollar values
+  - **Geo bar / choropleth** — state tooltip should include % of total, not just count
+
+  Approach: invoke `frontend-design` skill, review each tab's charts.js tooltip callbacks, rewrite for demo narrative quality.
+
 ## Feature Ideas
 
 - **Ticket Pacing: bar-in-bar visualization** — Replace the current annotation-line approach (dashed lines at 70% and 78%) with a bar-in-bar chart where the outer bar represents the dynamic per-game target (based on days-out: 88% day-of, 70% at Day 4, 78% at Day 17) and the inner bar shows actual % sold. The gap or overhang between them is instantly readable without requiring the viewer to find a floating reference line. Implementation: render two datasets — a background bar at `target` opacity and a foreground bar at `pctSold`, both on the same y-axis. Replaces `floor70` and `target78` annotations in `t2-ticketPacing`.
